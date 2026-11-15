@@ -1,0 +1,970 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#8fd3f4">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Čertíci v lese</title>
+<style>
+  :root {
+    --hole: 120px;
+    --sky1: #8fd3f4;
+    --sky2: #dff4ff;
+    --grass1: #9bd256;
+    --grass2: #5fa83a;
+    --wood: #8a5a33;
+    --gold: #ffd23f;
+    --ink: #3b2412;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    font-family: "Comic Sans MS", "Chalkboard SE", "Trebuchet MS", system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--sky1);
+    user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+    touch-action: manipulation;
+  }
+  button { font-family: inherit; cursor: pointer; border: none; }
+
+  .screen { position: fixed; inset: 0; display: none; }
+  .screen.active { display: block; }
+
+  /* ---------- les (pozadí) ---------- */
+  .forest { position: absolute; inset: 0; overflow: hidden;
+    background: linear-gradient(var(--sky1), var(--sky2) 40%); }
+  .forest .sun { position: absolute; right: 6%; top: 6%; width: 13vmin; height: 13vmin; border-radius: 50%;
+    background: radial-gradient(#fff6a8, #ffd23f 60%, #ffb800);
+    box-shadow: 0 0 40px 12px rgba(255, 220, 80, .55); }
+  .forest .cloud { position: absolute; height: 7vmin; width: 22vmin; background: #fff; border-radius: 50px; opacity: .9;
+    animation: drift 60s linear infinite; }
+  .forest .cloud::before, .forest .cloud::after { content: ""; position: absolute; background: #fff; border-radius: 50%; }
+  .forest .cloud::before { width: 9vmin; height: 9vmin; left: 3vmin; top: -4vmin; }
+  .forest .cloud::after { width: 11vmin; height: 11vmin; left: 9vmin; top: -6vmin; }
+  @keyframes drift { from { transform: translateX(-30vw); } to { transform: translateX(130vw); } }
+  .forest .hill { position: absolute; left: -10%; right: -10%; top: 36%; height: 30%; background: #7cbf45;
+    border-radius: 50% 50% 0 0 / 40% 40% 0 0; }
+  .forest .ground { position: absolute; left: 0; right: 0; top: 41%; bottom: 0;
+    background: linear-gradient(var(--grass1), var(--grass2));
+    border-radius: 60% 40% 0 0 / 30px 30px 0 0; }
+  .forest .tree { position: absolute; transform: translateX(-50%); pointer-events: none; }
+  .forest .tree svg { width: 100%; height: 100%; overflow: visible; display: block; }
+  .forest .flower { position: absolute; font-size: 3.2vmin; opacity: .85; pointer-events: none; transform: translate(-50%, -50%); }
+
+  /* ---------- tlačítka ---------- */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: .3em;
+    font-size: 30px; min-width: 64px; height: 64px; padding: 0 18px; border-radius: 22px;
+    background: #fff; color: var(--ink); box-shadow: 0 6px 0 rgba(0,0,0,.18); transition: transform .1s; }
+  .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,.18); }
+  .btn.big { font-size: 42px; height: 96px; min-width: 150px; border-radius: 30px; }
+  .btn.green { background: #5cc95c; color: #fff; }
+  .btn.yellow { background: var(--gold); }
+  .btn.round { padding: 0; width: 64px; border-radius: 50%; }
+  .btn small { font-size: 15px; }
+
+  /* ---------- menu ---------- */
+  .menu-box { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3vh; z-index: 5; }
+  .title { font-size: clamp(38px, 9vmin, 84px); font-weight: bold; color: #fff; text-align: center; line-height: 1;
+    text-shadow: 0 4px 0 #c0392b, 0 8px 0 rgba(0,0,0,.2); margin: 0; }
+  .hero { width: 30vmin; height: 34vmin; animation: hop 1.2s ease-in-out infinite; }
+  @keyframes hop { 0%,100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-14px) rotate(3deg); } }
+  .menu-buttons { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+
+  /* ---------- výběr úrovně ---------- */
+  .topbar { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between;
+    padding: max(12px, env(safe-area-inset-top)) 16px 8px; z-index: 20; gap: 10px; }
+  .world-title { font-size: clamp(22px, 5vmin, 40px); color: #fff; text-shadow: 0 3px 0 rgba(0,0,0,.25); font-weight: bold; }
+  .levels { position: absolute; left: 0; right: 0; top: 46%; transform: translateY(-50%); z-index: 5;
+    display: flex; justify-content: center; align-items: flex-end; gap: clamp(10px, 3vw, 36px); flex-wrap: wrap; padding: 0 16px; }
+  .stump { display: flex; flex-direction: column; align-items: center; gap: 6px; background: none; padding: 0; }
+  .stump .top { width: clamp(78px, 15vmin, 130px); height: clamp(78px, 15vmin, 130px); border-radius: 50%;
+    background: repeating-radial-gradient(circle, #e2b77e 0 6px, #c99456 6px 9px); border: 6px solid #6b4226;
+    display: flex; align-items: center; justify-content: center; font-size: clamp(34px, 7vmin, 60px); font-weight: bold; color: #5a3416;
+    box-shadow: 0 8px 0 #4a2d14; transition: transform .1s; }
+  .stump:active .top { transform: translateY(4px); }
+  .stump.locked .top { filter: grayscale(.8) brightness(.8); font-size: clamp(28px, 5vmin, 44px); }
+  .stump .stars { font-size: clamp(18px, 3.6vmin, 28px); letter-spacing: 2px; min-height: 1.3em; }
+  .worlds { position: absolute; left: 0; right: 0; bottom: max(16px, env(safe-area-inset-bottom)); display: flex; justify-content: center; gap: 14px; z-index: 5; flex-wrap: wrap; padding: 0 16px; }
+  .world-chip { background: rgba(255,255,255,.75); border-radius: 18px; padding: 8px 14px; font-size: 18px; display: flex; align-items: center; gap: 6px; }
+  .world-chip.on { background: #fff; outline: 4px solid var(--gold); }
+  .world-chip .e { font-size: 28px; }
+
+  /* ---------- hra ---------- */
+  .hud { position: absolute; top: 0; left: 0; right: 0; z-index: 50; display: flex; align-items: center; justify-content: space-between;
+    padding: max(10px, env(safe-area-inset-top)) 12px 6px; gap: 8px; pointer-events: none; }
+  .hud > * { pointer-events: auto; }
+  .slots { display: flex; gap: 4px; background: rgba(255,255,255,.8); padding: 6px 12px; border-radius: 22px; box-shadow: 0 4px 0 rgba(0,0,0,.12); }
+  .slot { width: clamp(38px, 8vmin, 58px); height: clamp(42px, 9vmin, 64px); }
+  .slot svg { width: 100%; height: 100%; }
+  .slot.empty svg { filter: grayscale(1) brightness(.35); opacity: .35; }
+  .slot.pop { animation: slotpop .5s ease-out; }
+  @keyframes slotpop { 0% { transform: scale(.4); } 60% { transform: scale(1.35); } 100% { transform: scale(1); } }
+  .hud-right { display: flex; gap: 8px; align-items: center; }
+  .lantern { display: flex; align-items: center; gap: 4px; background: rgba(255,255,255,.8); padding: 6px 12px; border-radius: 22px; box-shadow: 0 4px 0 rgba(0,0,0,.12); }
+  .lantern svg { width: 36px; height: 48px; }
+  .lantern .flame { transition: opacity .4s, transform .4s; transform-origin: 18px 30px; }
+  .lantern .dot { width: 16px; height: 16px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 8px #ffcc00; transition: all .4s; }
+  .lantern .dot.off { background: #777; box-shadow: none; transform: scale(.7); }
+  .lantern.warn { animation: warn .6s ease-in-out 3; }
+  @keyframes warn { 50% { transform: scale(1.15); background: #ffd6d6; } }
+
+  .field { position: absolute; inset: 0; z-index: 10; }
+  .hole { position: absolute; width: var(--hole); height: calc(var(--hole) * .5); transform: translate(-50%, -50%); }
+  .hole .rim { position: absolute; inset: -14% -9%; border-radius: 50%; background: radial-gradient(ellipse at 50% 35%, #a77445, #7a5230 70%); box-shadow: 0 5px 0 rgba(0,0,0,.18); }
+  .hole .pit { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(ellipse at 50% 30%, #0d0704 50%, #2b190c 75%, #4a2d17); }
+  .hole.stumpy .rim { background: repeating-radial-gradient(ellipse, #d4a36a 0 5px, #b07d45 5px 8px); inset: -22% -14%; box-shadow: 0 10px 0 #5e3a1c, 0 14px 0 rgba(0,0,0,.15); }
+  .hole .peek { position: absolute; left: 4%; width: 92%; bottom: 50%; height: calc(var(--hole) * 1.15); overflow: hidden; pointer-events: none; z-index: 3; }
+  .hole .creature { position: absolute; left: 0; bottom: 0; width: 100%; height: 100%; transform: translateY(105%);
+    transition: transform .35s cubic-bezier(.3, 1.5, .5, 1); display: flex; align-items: flex-end; justify-content: center; }
+  .hole.up .creature { transform: translateY(6%); }
+  .hole .creature svg { width: 90%; height: 100%; }
+  .hole .creature .animal { font-size: calc(var(--hole) * .7); line-height: 1; margin-bottom: -.12em; }
+  .hole .mark { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: calc(var(--hole) * .28); z-index: 4; opacity: .9; pointer-events: none; }
+  .hole.found .pit { background: radial-gradient(ellipse at 50% 30%, #3a2a10 40%, #4a2d17); }
+  .hole.found .mark { animation: twinkle 1.5s ease-in-out infinite; }
+  @keyframes twinkle { 50% { transform: translate(-50%, -50%) scale(1.25) rotate(20deg); } }
+  .hole.bump { animation: bump .25s; }
+  @keyframes bump { 50% { transform: translate(-50%, -50%) scale(1.08); } }
+
+  /* nápovědy */
+  .hint { position: absolute; opacity: 0; transition: opacity .5s; pointer-events: none; z-index: 2; }
+  .hint.on { opacity: 1; }
+  .hint.smoke { left: 50%; bottom: 45%; width: 0; height: 0; }
+  .hint.smoke i { position: absolute; left: calc(var(--hole) * -.1); bottom: 0; width: calc(var(--hole) * .24); height: calc(var(--hole) * .24); border-radius: 50%;
+    background: rgba(235, 235, 240, .95); box-shadow: 0 0 6px rgba(120,120,130,.5); animation: smoke 2.4s ease-out infinite; }
+  .hint.smoke i:nth-child(2) { animation-delay: .8s; }
+  .hint.smoke i:nth-child(3) { animation-delay: 1.6s; }
+  @keyframes smoke {
+    0% { transform: translate(0, 0) scale(.5); opacity: 0; }
+    15% { opacity: .95; }
+    100% { transform: translate(calc(var(--hole) * .15), calc(var(--hole) * -1)) scale(1.8); opacity: 0; }
+  }
+  .hint.tail { left: 66%; bottom: 35%; width: calc(var(--hole) * .34); height: calc(var(--hole) * .5); transform-origin: 20% 100%; }
+  .hint.tail.on { animation: wag 1s ease-in-out infinite; }
+  @keyframes wag { 0%,100% { transform: rotate(-12deg); } 50% { transform: rotate(14deg); } }
+  .hint.fork { left: 22%; bottom: 30%; width: calc(var(--hole) * .26); height: calc(var(--hole) * .55); }
+  .hint.fork.on { animation: poke 1.6s ease-in-out infinite; }
+  @keyframes poke { 0%,100% { transform: translateY(40%); } 50% { transform: translateY(0); } }
+  .hint svg { width: 100%; height: 100%; overflow: visible; }
+  .hint.shake { left: 50%; bottom: 60%; width: 0; height: 0; }
+  .hint.shake b { position: absolute; font-size: calc(var(--hole) * .22); animation: leaf 1s ease-out infinite; }
+  .hint.shake b:nth-child(2) { animation-delay: .5s; }
+  @keyframes leaf {
+    0% { transform: translate(-50%, 0) rotate(0); opacity: 0; }
+    20% { opacity: 1; }
+    100% { transform: translate(var(--dx, 60%), calc(var(--hole) * -.5)) rotate(140deg); opacity: 0; }
+  }
+  .hole.shaking .rim, .hole.shaking .pit { animation: wiggle .22s linear infinite; }
+  @keyframes wiggle { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-3deg) translateX(-2px); } 75% { transform: rotate(3deg) translateX(2px); } }
+  .hole.help .rim { animation: glow 1s ease-in-out infinite; }
+  @keyframes glow { 50% { box-shadow: 0 0 0 8px rgba(255, 230, 80, .95), 0 0 30px 12px rgba(255, 220, 60, .8); } }
+
+  .flyer { position: fixed; z-index: 200; pointer-events: none; transition: transform .75s cubic-bezier(.5, -0.3, .6, 1); transform-origin: 0 0; }
+  .flyer svg { width: 100%; height: 100%; }
+  .floaty { position: fixed; z-index: 150; pointer-events: none; font-size: 44px; animation: floatup 1.6s ease-out forwards; }
+  @keyframes floatup { to { transform: translate(40px, -160px) rotate(25deg); opacity: 0; } }
+
+  .night { position: absolute; inset: 0; z-index: 40; background: radial-gradient(circle at 50% 40%, rgba(10,15,60,.55), rgba(5,8,35,.92)); opacity: 0; pointer-events: none; transition: opacity 1.2s; }
+  .night.on { opacity: 1; }
+  .dim { position: absolute; inset: 0; z-index: 39; background: rgba(10, 15, 60, 1); opacity: 0; pointer-events: none; transition: opacity .6s; }
+
+  .banner { position: absolute; left: 50%; top: 30%; transform: translate(-50%, -50%) scale(.5); z-index: 60; opacity: 0; pointer-events: none;
+    background: #fff; border-radius: 30px; padding: 16px 28px; box-shadow: 0 10px 0 rgba(0,0,0,.15); text-align: center; transition: all .4s cubic-bezier(.3, 1.6, .5, 1); }
+  .banner.on { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  .banner .lvl { font-size: 26px; font-weight: bold; color: #c0392b; }
+  .banner .row { display: flex; gap: 6px; justify-content: center; margin-top: 8px; }
+  .banner .row svg { width: 56px; height: 64px; }
+
+  /* ---------- překryvy (výhra / prohra) ---------- */
+  .overlay { position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.35); padding: 16px; }
+  .overlay.on { display: flex; }
+  .card { background: #fffaf0; border-radius: 34px; padding: 22px 26px; text-align: center; box-shadow: 0 12px 0 rgba(0,0,0,.2);
+    max-width: 560px; width: 100%; animation: cardin .5s cubic-bezier(.3, 1.6, .5, 1); max-height: 100%; overflow: auto; }
+  @keyframes cardin { from { transform: scale(.3); opacity: 0; } }
+  .card h2 { margin: 0 0 6px; font-size: clamp(28px, 6vmin, 44px); color: #c0392b; }
+  .bigstars { font-size: clamp(54px, 13vmin, 90px); letter-spacing: 6px; line-height: 1.1; }
+  .bigstars span { display: inline-block; opacity: .25; filter: grayscale(1); transform: scale(.6); transition: all .45s cubic-bezier(.3, 1.8, .5, 1); }
+  .bigstars span.lit { opacity: 1; filter: none; transform: scale(1); }
+  .dance { display: flex; justify-content: center; gap: 4px; margin: 6px 0 10px; flex-wrap: wrap; }
+  .dance svg { width: clamp(52px, 11vmin, 80px); height: clamp(60px, 12.5vmin, 92px); animation: dance .6s ease-in-out infinite alternate; }
+  .dance svg:nth-child(2n) { animation-delay: .3s; }
+  @keyframes dance { from { transform: translateY(0) rotate(-10deg); } to { transform: translateY(-14px) rotate(10deg); } }
+  .newbadge { display: inline-block; background: var(--gold); border-radius: 16px; padding: 6px 14px; font-size: 20px; margin-bottom: 12px; animation: hop 1s infinite; }
+  .card .actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+  .laugh { width: 140px; height: 160px; animation: laugh .25s linear infinite; }
+  @keyframes laugh { 50% { transform: rotate(6deg) translateY(-4px); } }
+
+  .confetti { position: fixed; top: -20px; width: 12px; height: 18px; z-index: 300; pointer-events: none; animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
+
+  /* ---------- album ---------- */
+  .album-grid { position: absolute; top: 96px; left: 0; right: 0; bottom: 0; overflow-y: auto; z-index: 5;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; padding: 10px 16px 30px; align-content: start; }
+  .acard { background: #fffaf0; border-radius: 24px; padding: 10px; text-align: center; box-shadow: 0 6px 0 rgba(0,0,0,.15); }
+  .acard svg { width: 100%; height: 130px; }
+  .acard .nm { font-size: 22px; font-weight: bold; }
+  .acard .ds { font-size: 15px; opacity: .75; }
+  .acard.locked svg { filter: brightness(0); opacity: .25; }
+  .acard.locked .nm { opacity: .4; }
+  .acard.jump svg { animation: hop .6s 2; }
+  .count-chip { background: #fff; border-radius: 20px; padding: 8px 16px; font-size: 22px; font-weight: bold; box-shadow: 0 4px 0 rgba(0,0,0,.12); }
+
+  @media (max-width: 560px) {
+    .hud { padding-left: 8px; padding-right: 8px; gap: 4px; }
+    .hud .btn.round { width: 46px; min-width: 46px; height: 46px; font-size: 22px; }
+    .slots, .lantern { padding: 4px 6px; gap: 2px; border-radius: 16px; }
+    .slot { width: 28px; height: 32px; }
+    .lantern svg { width: 22px; height: 30px; }
+    .lantern .dot { width: 10px; height: 10px; }
+    .hud-right { gap: 4px; }
+  }
+  @media (max-height: 480px) {
+    .btn { height: 52px; min-width: 52px; font-size: 24px; }
+    .btn.round { width: 52px; }
+    .btn.big { height: 72px; font-size: 32px; }
+    .album-grid { top: 76px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- MENU -->
+<section id="menu" class="screen active">
+  <div class="forest" data-forest></div>
+  <div class="menu-box">
+    <h1 class="title">Čertíci<br>v lese</h1>
+    <div class="hero" id="heroDevil"></div>
+    <div class="menu-buttons">
+      <button class="btn big green" id="btnPlay" aria-label="Hrát">▶</button>
+      <button class="btn big yellow" id="btnAlbum" aria-label="Album">📖</button>
+    </div>
+  </div>
+</section>
+
+<!-- VÝBĚR ÚROVNĚ -->
+<section id="levels" class="screen">
+  <div class="forest" data-forest></div>
+  <div class="topbar">
+    <button class="btn round" data-go="menu" aria-label="Domů">🏠</button>
+    <div class="world-title">🌱 Jarní les</div>
+    <button class="btn round yellow" data-go="album" aria-label="Album">📖</button>
+  </div>
+  <div class="levels" id="levelList"></div>
+  <div class="worlds">
+    <div class="world-chip on"><span class="e">🌱</span>Jaro</div>
+    <div class="world-chip"><span class="e">☀️</span>🔒</div>
+    <div class="world-chip"><span class="e">🍂</span>🔒</div>
+    <div class="world-chip"><span class="e">❄️</span>🔒</div>
+    <div class="world-chip"><span class="e">🎅</span>🔒</div>
+  </div>
+</section>
+
+<!-- HRA -->
+<section id="game" class="screen">
+  <div class="forest" id="gameForest"></div>
+  <div class="field" id="field"></div>
+  <div class="dim" id="dim"></div>
+  <div class="night" id="night"></div>
+  <div class="hud">
+    <button class="btn round" id="btnLeave" aria-label="Zpět">🏠</button>
+    <div class="slots" id="slots"></div>
+    <div class="hud-right">
+      <div class="lantern" id="lantern"></div>
+      <button class="btn round" id="btnSay" aria-label="Zopakovat">🔊</button>
+    </div>
+  </div>
+  <div class="banner" id="banner"></div>
+</section>
+
+<!-- ALBUM -->
+<section id="album" class="screen">
+  <div class="forest" data-forest></div>
+  <div class="topbar">
+    <button class="btn round" id="btnAlbumBack" aria-label="Zpět">⬅</button>
+    <div class="world-title">📖 Čertí album</div>
+    <div class="count-chip" id="albumCount">0 / 8</div>
+  </div>
+  <div class="album-grid" id="albumGrid"></div>
+</section>
+
+<!-- VÝHRA -->
+<div class="overlay" id="winOverlay">
+  <div class="card">
+    <h2>Hurá!</h2>
+    <div class="bigstars" id="winStars"><span>⭐</span><span>⭐</span><span>⭐</span></div>
+    <div class="dance" id="winDance"></div>
+    <div id="winNew"></div>
+    <div class="actions">
+      <button class="btn big" id="btnWinHome" aria-label="Úrovně">🏠</button>
+      <button class="btn big" id="btnWinAgain" aria-label="Znovu">↻</button>
+      <button class="btn big green" id="btnWinNext" aria-label="Další">▶</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROHRA (lucerna zhasla) -->
+<div class="overlay" id="loseOverlay">
+  <div class="card" style="background:#2b2f5e;color:#fff">
+    <h2 style="color:#ffd23f">Lucerna zhasla!</h2>
+    <div id="loseDevil"></div>
+    <p style="font-size:22px;margin:6px 0 14px">Hihihi! Čertíci se schovali.</p>
+    <div class="actions">
+      <button class="btn big" id="btnLoseHome" aria-label="Úrovně">🏠</button>
+      <button class="btn big yellow" id="btnLoseRetry" aria-label="Zkusit znovu">🏮 ↻</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ================= DATA ================= */
+
+  const ROSTER = [
+    { id: 'pepik',     name: 'Pepík',     color: '#e2412f', acc: null,       desc: 'Rád se směje.' },
+    { id: 'bertik',    name: 'Bertík',    color: '#ef7a2b', acc: 'hat',      desc: 'Pořád někam pospíchá.' },
+    { id: 'kudrnka',   name: 'Kudrnka',   color: '#e8528a', acc: 'bow',      desc: 'Nejraději tancuje.' },
+    { id: 'bonifacek', name: 'Bonifáček', color: '#b8322a', acc: 'glasses',  desc: 'Všechno ví.' },
+    { id: 'fanda',     name: 'Fanda',     color: '#d4483a', acc: 'scarf',    desc: 'Pořád mu je zima.' },
+    { id: 'lojzik',    name: 'Lojzík',    color: '#9b4dca', acc: 'nightcap', desc: 'Rád spinká.' },
+    { id: 'barborka',  name: 'Barborka',  color: '#f2664a', acc: 'flower',   desc: 'Sbírá kytičky.' },
+    { id: 'matysek',   name: 'Matýsek',   color: '#d9302f', acc: 'crown',    desc: 'Je nejmenší, ale nejrychlejší.' },
+  ];
+
+  const ANIMALS = [
+    { e: '🦔', say: 'To je jen ježek.' },
+    { e: '🐰', say: 'To je zajíček.' },
+    { e: '🐿️', say: 'To je veverka.' },
+    { e: '🐭', say: 'To je myška.' },
+    { e: '🐸', say: 'To je žabka.' },
+  ];
+
+  // hint: strong = nápověda pořád vidět, medium = občas, weak = jen chvilku
+  // lantern: kolik ťuknutí vedle smí být (0 = lucerna nezhasne)
+  const LEVELS = [
+    { holes: 4, devils: 2, animals: 0, hint: 'strong', types: ['smoke'], lantern: 0,
+      intro: 'V lese se schovali čertíci. Ťukni na díru, ze které se kouří! Najdi dva čertíky.' },
+    { holes: 5, devils: 3, animals: 1, hint: 'strong', types: ['smoke', 'tail'], lantern: 0,
+      intro: 'V dírách bydlí i zvířátka. Hledej kouř a čertí ocásek! Najdi tři čertíky.' },
+    { holes: 6, devils: 3, animals: 2, hint: 'medium', types: ['smoke', 'tail', 'fork'], lantern: 3,
+      intro: 'Teď máš lucernu. Když ťukneš vedle, trochu zhasne. Čertíci ukazují vidle! Najdi tři čertíky.' },
+    { holes: 8, devils: 4, animals: 2, hint: 'medium', types: ['smoke', 'tail', 'fork', 'shake'], lantern: 3,
+      intro: 'Některé díry se třesou. To tam zlobí čertík! Najdi čtyři čertíky.' },
+    { holes: 9, devils: 4, animals: 3, hint: 'weak', types: ['smoke', 'tail', 'fork', 'shake'], lantern: 3,
+      intro: 'Čertíci se schovávají líp. Počkej chvilku a dívej se pozorně! Najdi čtyři čertíky.' },
+  ];
+
+  const NUM_ACC = { 1: 'jednoho čertíka', 2: 'dva čertíky', 3: 'tři čertíky', 4: 'čtyři čertíky', 5: 'pět čertíků' };
+  const STILL = { 1: 'Ještě jeden!', 2: 'Ještě dva!', 3: 'Ještě tři!', 4: 'Ještě čtyři!' };
+
+  /* ================= ULOŽENÍ ================= */
+
+  const SAVE_KEY = 'certici-v-lese-v1';
+  let save = { stars: [0, 0, 0, 0, 0], album: [] };
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if (s && Array.isArray(s.stars)) save = { stars: s.stars, album: s.album || [] };
+  } catch (e) {}
+  function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
+
+  /* ================= GRAFIKA ================= */
+
+  function devilSVG(d, extraClass = '') {
+    const c = d.color;
+    let acc = '';
+    switch (d.acc) {
+      case 'hat': acc = `<path d="M33 47 Q50 22 67 47 Z" fill="#3a7bd5"/><rect x="29" y="44" width="42" height="7" rx="3.5" fill="#2a5fa8"/><circle cx="50" cy="28" r="5" fill="#fff"/>`; break;
+      case 'bow': acc = `<g transform="translate(63 44)"><path d="M0 0 L-10 -7 L-10 7 Z M0 0 L10 -7 L10 7 Z" fill="#ff7ab8" stroke="#d94f92" stroke-width="1.5"/><circle r="3.5" fill="#d94f92"/></g>`; break;
+      case 'glasses': acc = `<g fill="rgba(255,255,255,.15)" stroke="#2b1a12" stroke-width="2.8"><circle cx="37" cy="66" r="12"/><circle cx="63" cy="66" r="12"/></g><path d="M49 66 L51 66" stroke="#2b1a12" stroke-width="2.8"/>`; break;
+      case 'scarf': acc = `<path d="M22 97 Q50 110 78 97 L78 106 Q50 119 22 106 Z" fill="#2e9e5b"/><path d="M60 106 L66 120 L75 117 L69 104 Z" fill="#2e9e5b"/><path d="M30 101 L30 109 M42 104 L42 112 M58 104 L58 112 M70 101 L70 109" stroke="#fff" stroke-width="3"/>`; break;
+      case 'nightcap': acc = `<path d="M33 48 Q44 18 84 20 Q62 30 67 48 Z" fill="#6a5acd"/><rect x="30" y="44" width="40" height="7" rx="3.5" fill="#fff"/><circle cx="85" cy="21" r="5.5" fill="#fff"/>`; break;
+      case 'flower': acc = `<g transform="translate(64 43)"><circle cx="0" cy="-6" r="4.5" fill="#fff36b"/><circle cx="6" cy="0" r="4.5" fill="#fff36b"/><circle cx="0" cy="6" r="4.5" fill="#fff36b"/><circle cx="-6" cy="0" r="4.5" fill="#fff36b"/><circle r="3.5" fill="#ff9a3c"/></g>`; break;
+      case 'crown': acc = `<path d="M36 46 L38 30 L45 38 L50 26 L55 38 L62 30 L64 46 Z" fill="#ffd23f" stroke="#e0a800" stroke-width="1.5"/><circle cx="50" cy="40" r="2.5" fill="#e2412f"/>`; break;
+    }
+    return `<svg class="${extraClass}" viewBox="-8 10 116 112" xmlns="http://www.w3.org/2000/svg">
+      <path d="M78 98 Q102 104 98 82 Q95 72 101 64" stroke="${c}" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+      <path d="M96 68 L104 54 L108 70 Z" fill="${c}"/>
+      <path d="M31 50 Q15 32 22 15 Q31 34 44 42 Z" fill="#fff1cf" stroke="#d9b97a" stroke-width="1.5"/>
+      <path d="M69 50 Q85 32 78 15 Q69 34 56 42 Z" fill="#fff1cf" stroke="#d9b97a" stroke-width="1.5"/>
+      <path d="M19 66 L3 56 L19 80 Z" fill="${c}"/>
+      <path d="M81 66 L97 56 L81 80 Z" fill="${c}"/>
+      <circle cx="50" cy="73" r="34" fill="${c}"/>
+      <ellipse cx="50" cy="86" rx="22" ry="15" fill="rgba(255,255,255,.18)"/>
+      <path d="M29 53 Q36 49 44 55 M71 53 Q64 49 56 55" stroke="#4a1410" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <ellipse cx="37" cy="66" rx="9" ry="11" fill="#fff"/>
+      <ellipse cx="63" cy="66" rx="9" ry="11" fill="#fff"/>
+      <circle cx="38.5" cy="68" r="5.2" fill="#2b1a12"/>
+      <circle cx="61.5" cy="68" r="5.2" fill="#2b1a12"/>
+      <circle cx="40.5" cy="65.5" r="1.9" fill="#fff"/>
+      <circle cx="63.5" cy="65.5" r="1.9" fill="#fff"/>
+      <circle cx="27" cy="81" r="5" fill="#ff9aa8" opacity=".6"/>
+      <circle cx="73" cy="81" r="5" fill="#ff9aa8" opacity=".6"/>
+      <path d="M37 84 Q50 99 63 84 Z" fill="#5a1414"/>
+      <path d="M44 85 L46.5 91 L49 85.4 Z" fill="#fff"/>
+      <path d="M53 85.4 L55.5 90 L57.5 85 Z" fill="#fff"/>
+      ${acc}
+    </svg>`;
+  }
+
+  const tailSVG = (c) => `<svg viewBox="0 0 40 60"><path d="M8 60 Q2 34 18 26 Q32 20 28 8" stroke="${c}" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M22 10 L32 -4 L36 14 Z" fill="${c}"/></svg>`;
+  const forkSVG = () => `<svg viewBox="0 0 30 64"><rect x="13" y="16" width="4" height="48" rx="2" fill="#6b4226"/><path d="M4 2 L4 18 Q4 22 15 22 Q26 22 26 18 L26 2" stroke="#555" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M15 0 L15 20" stroke="#555" stroke-width="4" stroke-linecap="round"/><path d="M1 6 L4 -2 L7 6 Z M12 4 L15 -4 L18 4 Z M23 6 L26 -2 L29 6 Z" fill="#555"/></svg>`;
+
+  const pineSVG = (c) => `<svg viewBox="0 0 60 100"><rect x="26" y="78" width="8" height="22" fill="#6b4226"/><polygon points="30,0 6,38 54,38" fill="${c}"/><polygon points="30,16 2,62 58,62" fill="${c}"/><polygon points="30,36 -2,86 62,86" fill="${c}"/></svg>`;
+  const roundSVG = (c, blossom) => `<svg viewBox="0 0 80 100"><rect x="35" y="55" width="10" height="45" fill="#7a4a2a"/><circle cx="40" cy="36" r="28" fill="${c}"/><circle cx="20" cy="50" r="18" fill="${c}"/><circle cx="60" cy="50" r="18" fill="${c}"/>${blossom ? '<g fill="#ffc6dc"><circle cx="30" cy="28" r="3.5"/><circle cx="52" cy="22" r="3.5"/><circle cx="18" cy="50" r="3.5"/><circle cx="62" cy="46" r="3.5"/><circle cx="42" cy="44" r="3.5"/><circle cx="48" cy="58" r="3"/><circle cx="26" cy="60" r="3"/></g>' : ''}</svg>`;
+
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+  function buildForest(el, flowers = true) {
+    el.innerHTML = `<div class="sun"></div>
+      <div class="cloud" style="top:9%;animation-delay:-12s"></div>
+      <div class="cloud" style="top:19%;animation-delay:-41s;animation-duration:80s"></div>
+      <div class="hill"></div>`;
+    const greens = ['#3f8f3a', '#2f7a34', '#4fa046', '#367f3c'];
+    // stromy na obzoru
+    const n = 12;
+    for (let i = 0; i < n; i++) {
+      const t = document.createElement('div');
+      t.className = 'tree';
+      const h = rand(16, 27);
+      const x = (i + rand(0.1, 0.9)) / n * 108 - 4;
+      t.style.left = x + '%';
+      t.style.top = (43 - h) + '%';
+      t.style.height = h + '%';
+      t.style.aspectRatio = Math.random() < 0.5 ? '0.6' : '0.8';
+      t.innerHTML = t.style.aspectRatio === '0.6' ? pineSVG(pick(greens)) : roundSVG(pick(greens), Math.random() < 0.35);
+      el.appendChild(t);
+    }
+    const g = document.createElement('div');
+    g.className = 'ground';
+    el.appendChild(g);
+    // velké stromy po stranách
+    [[-2, 0.6], [102, 0.8]].forEach(([x, ar]) => {
+      const t = document.createElement('div');
+      t.className = 'tree';
+      t.style.left = x + '%'; t.style.bottom = '34%'; t.style.height = `min(58%, ${ar === 0.6 ? 55 : 40}vw)`; t.style.aspectRatio = ar;
+      t.innerHTML = ar === 0.6 ? pineSVG('#2c6e2f') : roundSVG('#3a8a35', true);
+      el.appendChild(t);
+    });
+    if (flowers) {
+      const fl = ['🌼', '🌷', '🌸', '🍄', '🌱'];
+      for (let i = 0; i < 14; i++) {
+        const f = document.createElement('div');
+        f.className = 'flower';
+        f.textContent = pick(fl);
+        f.style.left = rand(3, 97) + '%';
+        f.style.top = rand(46, 97) + '%';
+        el.appendChild(f);
+      }
+    }
+  }
+
+  /* ================= ZVUK A HLAS ================= */
+
+  let actx = null;
+  function audio() {
+    if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  }
+  function tone(f1, f2, dur, type = 'sine', when = 0, vol = 0.18) {
+    const a = audio(); if (!a) return;
+    const t = a.currentTime + when;
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(f1, t);
+    o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(a.destination);
+    o.start(t); o.stop(t + dur + 0.05);
+  }
+  const SFX = {
+    pop() { tone(300, 900, 0.15, 'sine'); },
+    giggle() { [900, 1150, 950, 1200, 1000, 1250].forEach((f, i) => tone(f, f * 0.9, 0.07, 'triangle', 0.12 + i * 0.08, 0.14)); },
+    boing() { tone(180, 420, 0.18, 'sine', 0, 0.2); tone(420, 200, 0.25, 'sine', 0.18, 0.15); },
+    whoosh() { tone(500, 160, 0.4, 'sine', 0, 0.1); },
+    dim() { tone(400, 120, 0.5, 'triangle', 0.05, 0.12); },
+    collect() { tone(700, 1400, 0.2, 'sine', 0, 0.15); },
+    win() { [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, f, 0.22, 'triangle', i * 0.13, 0.17)); },
+    lose() { [500, 420, 350, 260].forEach((f, i) => tone(f, f * 0.95, 0.3, 'triangle', i * 0.22, 0.14)); },
+    click() { tone(600, 700, 0.06, 'sine', 0, 0.1); },
+  };
+
+  let czVoice = null;
+  function loadVoices() {
+    if (!('speechSynthesis' in window)) return;
+    const vs = speechSynthesis.getVoices();
+    czVoice = vs.find(v => /^cs/i.test(v.lang)) || null;
+  }
+  if ('speechSynthesis' in window) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
+  let lastSaid = '';
+  function say(text, remember = false) {
+    if (remember) lastSaid = text;
+    if (!('speechSynthesis' in window)) return;
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'cs-CZ';
+      if (czVoice) u.voice = czVoice;
+      u.rate = 0.95; u.pitch = 1.1;
+      speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+
+  /* ================= OBRAZOVKY ================= */
+
+  const $ = (id) => document.getElementById(id);
+  function show(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id));
+    if (id === 'levels') renderLevels();
+    if (id === 'album') renderAlbum();
+  }
+  document.querySelectorAll('[data-forest]').forEach(el => buildForest(el));
+  $('heroDevil').innerHTML = devilSVG(ROSTER[0]);
+  document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => { SFX.click(); show(b.dataset.go); }));
+
+  let albumReturn = 'menu';
+  $('btnPlay').addEventListener('click', () => { SFX.click(); show('levels'); say('Vyber si pařez.'); });
+  $('btnAlbum').addEventListener('click', () => { SFX.click(); albumReturn = 'menu'; show('album'); });
+  document.querySelector('#levels [data-go="album"]').addEventListener('click', () => { albumReturn = 'levels'; });
+  $('btnAlbumBack').addEventListener('click', () => { SFX.click(); show(albumReturn); });
+
+  function isUnlocked(i) { return i === 0 || save.stars[i - 1] > 0; }
+
+  function renderLevels() {
+    const box = $('levelList');
+    box.innerHTML = '';
+    LEVELS.forEach((lv, i) => {
+      const b = document.createElement('button');
+      const open = isUnlocked(i);
+      b.className = 'stump' + (open ? '' : ' locked');
+      b.setAttribute('aria-label', 'Úroveň ' + (i + 1));
+      const st = save.stars[i] || 0;
+      b.innerHTML = `<div class="top">${open ? i + 1 : '🔒'}</div><div class="stars">${open ? '⭐'.repeat(st) + '<span style="opacity:.3">' + '⭐'.repeat(3 - st) + '</span>' : ''}</div>`;
+      b.addEventListener('click', () => {
+        if (!open) { SFX.dim(); say('Tenhle pařez je ještě zamčený. Nejdřív dohraj ten předchozí.'); return; }
+        SFX.click(); startLevel(i);
+      });
+      box.appendChild(b);
+    });
+  }
+
+  function renderAlbum() {
+    const g = $('albumGrid');
+    g.innerHTML = '';
+    let have = 0;
+    ROSTER.forEach(d => {
+      const got = save.album.includes(d.id);
+      if (got) have++;
+      const c = document.createElement('div');
+      c.className = 'acard' + (got ? '' : ' locked');
+      c.innerHTML = devilSVG(d) + `<div class="nm">${got ? d.name : '?'}</div><div class="ds">${got ? d.desc : 'Ještě nenalezen'}</div>`;
+      c.addEventListener('click', () => {
+        if (got) { say(`To je ${d.name}. ${d.desc}`); SFX.giggle(); c.classList.remove('jump'); void c.offsetWidth; c.classList.add('jump'); }
+        else say('Tohohle čertíka jsi ještě nenašla. Hledej v lese!');
+      });
+      g.appendChild(c);
+    });
+    $('albumCount').textContent = `${have} / ${ROSTER.length}`;
+  }
+
+  /* ================= HRA ================= */
+
+  let G = null; // stav aktuální úrovně
+  let hintTimer = null, idleTimer = null;
+
+  function startLevel(i) {
+    clearInterval(hintTimer); clearTimeout(idleTimer);
+    const lv = LEVELS[i];
+    show('game');
+    buildForest($('gameForest'));
+    $('night').classList.remove('on');
+    $('dim').style.opacity = 0;
+    closeOverlays();
+
+    // obsazení děr
+    const kinds = [];
+    for (let k = 0; k < lv.devils; k++) kinds.push('devil');
+    for (let k = 0; k < lv.animals; k++) kinds.push('animal');
+    while (kinds.length < lv.holes) kinds.push('empty');
+    shuffle(kinds);
+
+    // kteří čertíci — přednost mají ti, co ještě nejsou v albu
+    const fresh = shuffle(ROSTER.filter(d => !save.album.includes(d.id)));
+    const old = shuffle(ROSTER.filter(d => save.album.includes(d.id)));
+    const ids = fresh.concat(old).slice(0, lv.devils);
+    const animals = shuffle(ANIMALS.slice());
+
+    // nápovědy: každý typ aspoň jednou, pokud to jde
+    const hintTypes = shuffle(lv.types.slice());
+    let di = 0, ai = 0;
+
+    G = {
+      level: i, lv, holes: [], found: 0, misses: 0,
+      lanternLeft: lv.lantern, relit: false, over: false, newIds: [], t0: performance.now(),
+    };
+
+    const field = $('field');
+    field.innerHTML = '';
+    const pos = placeHoles(lv.holes);
+
+    kinds.forEach((kind, k) => {
+      const h = { kind, el: null, state: 'hidden' };
+      if (kind === 'devil') {
+        h.devil = ids[di];
+        h.hint = di < hintTypes.length ? hintTypes[di] : pick(lv.types);
+        h.phase = Math.random() * 6000;
+        di++;
+      } else if (kind === 'animal') {
+        h.animal = animals[ai++ % animals.length];
+      }
+      const el = document.createElement('div');
+      el.className = 'hole' + (Math.random() < 0.35 ? ' stumpy' : '');
+      el.style.left = pos[k].x * 100 + '%';
+      el.style.top = pos[k].y * 100 + '%';
+      el.style.zIndex = Math.round(pos[k].y * 100);
+      let hintHTML = '';
+      if (kind === 'devil') {
+        if (h.hint === 'smoke') hintHTML = '<div class="hint smoke"><i></i><i></i><i></i></div>';
+        if (h.hint === 'tail') hintHTML = `<div class="hint tail">${tailSVG(h.devil.color)}</div>`;
+        if (h.hint === 'fork') hintHTML = `<div class="hint fork">${forkSVG()}</div>`;
+        if (h.hint === 'shake') hintHTML = '<div class="hint shake"><b style="--dx:-120%">🍃</b><b style="--dx:80%">🍃</b></div>';
+      }
+      el.innerHTML = `<div class="rim"></div><div class="pit"></div>${hintHTML}
+        <div class="peek"><div class="creature">${
+          kind === 'devil' ? devilSVG(h.devil) : kind === 'animal' ? `<span class="animal">${h.animal.e}</span>` : ''
+        }</div></div><div class="mark"></div>`;
+      h.el = el;
+      field.appendChild(el);
+      G.holes.push(h);
+    });
+
+    sizeHoles();
+    renderSlots();
+    renderLantern();
+
+    // úvodní cedulka
+    const b = $('banner');
+    let row = '';
+    for (let k = 0; k < lv.devils; k++) row += devilSVG(ROSTER[0]);
+    b.innerHTML = `<div class="lvl">Úroveň ${i + 1}</div><div class="row">${row}</div>`;
+    b.classList.add('on');
+    setTimeout(() => b.classList.remove('on'), 2200);
+
+    say(lv.intro, true);
+    hintTimer = setInterval(updateHints, 150);
+    resetIdle();
+  }
+
+  // ťuknutí se přiřadí k nejbližší díře (i kousek nad ní, kde vykukuje čertík)
+  $('field').addEventListener('pointerdown', (ev) => {
+    if (!G) return;
+    ev.preventDefault();
+    const w = holeSizePx();
+    let best = null, bd = Infinity;
+    G.holes.forEach(h => {
+      const r = h.el.getBoundingClientRect();
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      const dx = (ev.clientX - cx) / (w * 0.65);
+      const dy = ev.clientY < cy ? (cy - ev.clientY) / (w * 1.0) : (ev.clientY - cy) / (w * 0.45);
+      const d = dx * dx + dy * dy;
+      if (d < bd) { bd = d; best = h; }
+    });
+    if (best && bd < 1.4) tapHole(best);
+  });
+
+  function holeSizePx() {
+    const W = innerWidth, H = innerHeight;
+    const n = G ? G.lv.holes : 5;
+    let s = Math.min(W * 0.2, H * 0.2, 170);
+    if (n >= 7) s *= 0.86;
+    if (n >= 9) s *= 0.92;
+    return Math.max(70, s);
+  }
+  function sizeHoles() { document.documentElement.style.setProperty('--hole', holeSizePx() + 'px'); }
+  addEventListener('resize', () => { if (G) sizeHoles(); });
+
+  function placeHoles(n) {
+    const W = innerWidth, H = innerHeight;
+    let w = holeSizePx();
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const pts = [];
+      let tries = 0;
+      while (pts.length < n && tries < 3000) {
+        tries++;
+        const x = rand(0.11, 0.89) * W, y = rand(0.53, 0.9) * H;
+        const ok = pts.every(p => ((p.x - x) / (w * 1.55)) ** 2 + ((p.y - y) / (w * 1.0)) ** 2 >= 1);
+        if (ok) pts.push({ x, y });
+      }
+      if (pts.length === n) return pts.map(p => ({ x: p.x / W, y: p.y / H }));
+      w *= 0.9;
+    }
+    // nouzově mřížka
+    const cols = Math.ceil(Math.sqrt(n * 1.8)), rows = Math.ceil(n / cols);
+    return Array.from({ length: n }, (_, k) => ({ x: 0.12 + 0.76 * ((k % cols) + 0.5) / cols, y: 0.53 + 0.37 * (Math.floor(k / cols) + 0.5) / rows }));
+  }
+
+  function renderSlots() {
+    const box = $('slots');
+    box.innerHTML = '';
+    const devils = G.holes.filter(h => h.kind === 'devil');
+    devils.forEach(h => {
+      const s = document.createElement('div');
+      s.className = 'slot' + (h.state === 'found' ? '' : ' empty');
+      s.innerHTML = devilSVG(h.state === 'found' ? h.devil : ROSTER[0]);
+      box.appendChild(s);
+    });
+  }
+  function nextEmptySlot() { return $('slots').querySelector('.slot.empty'); }
+
+  function renderLantern() {
+    const box = $('lantern');
+    const max = G.lv.lantern;
+    if (!max) { box.style.display = 'none'; return; }
+    box.style.display = '';
+    const k = G.lanternLeft / max;
+    let html = `<svg viewBox="0 0 36 48"><rect x="13" y="0" width="10" height="5" rx="2" fill="#555"/><path d="M8 6 H28 L31 12 H5 Z" fill="#333"/>
+      <rect x="6" y="12" width="24" height="28" rx="4" fill="${k > 0 ? 'rgba(255,236,150,.9)' : '#cfd3e0'}" stroke="#333" stroke-width="2.5"/>
+      <g class="flame" style="opacity:${k > 0 ? 1 : 0};transform:scale(${0.5 + 0.5 * k})"><path d="M18 18 Q24 26 18 34 Q12 26 18 18 Z" fill="#ff9a1f"/><path d="M18 24 Q21 28 18 33 Q15 28 18 24 Z" fill="#fff36b"/></g>
+      <rect x="4" y="40" width="28" height="6" rx="2" fill="#333"/></svg>`;
+    for (let j = 0; j < max; j++) html += `<div class="dot${j < G.lanternLeft ? '' : ' off'}"></div>`;
+    box.innerHTML = html;
+  }
+
+  function updateHints() {
+    if (!G || G.over) return;
+    const now = performance.now() - G.t0;
+    const mode = G.lv.hint;
+    G.holes.forEach(h => {
+      if (h.kind !== 'devil' || h.state === 'found') return;
+      let on;
+      if (h.el.classList.contains('help') || mode === 'strong') on = true;
+      else if (mode === 'medium') on = ((now + h.phase) % 3600) < 2200;
+      else on = ((now + h.phase) % 6000) < 1700;
+      const hint = h.el.querySelector('.hint');
+      if (hint) hint.classList.toggle('on', on);
+      if (h.hint === 'shake') h.el.classList.toggle('shaking', on);
+    });
+  }
+
+  function resetIdle() {
+    clearTimeout(idleTimer);
+    if (!G || G.over) return;
+    const wait = G.level < 2 ? 12000 : 16000;
+    idleTimer = setTimeout(() => {
+      if (!G || G.over) return;
+      const left = G.holes.filter(h => h.kind === 'devil' && h.state !== 'found' && !h.el.classList.contains('help'));
+      if (!left.length) return;
+      pick(left).el.classList.add('help');
+      say('Podívej se pořádně. Tady něco svítí!');
+    }, wait);
+  }
+
+  function tapHole(h) {
+    if (!G || G.over || h.busy) return;
+    audio();
+    resetIdle();
+    const el = h.el;
+    el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+
+    if (h.state === 'found') { SFX.click(); return; }
+
+    if (h.kind === 'devil') {
+      h.state = 'found';
+      h.busy = true;
+      el.classList.remove('help', 'shaking');
+      el.querySelector('.hint')?.remove();
+      el.classList.add('up');
+      SFX.pop(); SFX.giggle();
+      G.found++;
+      const total = G.lv.devils;
+      const left = total - G.found;
+      const isNew = !save.album.includes(h.devil.id);
+      if (isNew) { save.album.push(h.devil.id); G.newIds.push(h.devil.id); persist(); }
+      if (left > 0) say(`Hihi! To je ${h.devil.name}. ${STILL[left] || ''}`, false);
+      else say(`Hihi! To je ${h.devil.name}.`);
+      lastSaid = left > 0 ? `Najdi ještě ${NUM_ACC[left]}.` : lastSaid;
+      setTimeout(() => flyToSlot(h), 900);
+      return;
+    }
+
+    // zvířátko nebo prázdná díra
+    const firstTime = h.state === 'hidden';
+    h.state = 'checked';
+    if (h.kind === 'animal') {
+      h.busy = true;
+      el.classList.add('up');
+      SFX.boing();
+      setTimeout(() => { el.classList.remove('up'); el.querySelector('.mark').textContent = '💤'; h.busy = false; }, 1400);
+    } else {
+      SFX.whoosh();
+      const r = el.getBoundingClientRect();
+      const f = document.createElement('div');
+      f.className = 'floaty';
+      f.textContent = pick(['🦋', '🍂', '🐞', '🍃']);
+      f.style.left = (r.left + r.width / 2 - 22) + 'px';
+      f.style.top = (r.top - 20) + 'px';
+      document.body.appendChild(f);
+      setTimeout(() => f.remove(), 1700);
+      el.querySelector('.mark').textContent = '🍂';
+    }
+    if (!firstTime) return; // znovu ťuknout na už prozkoumanou díru nic nestojí
+
+    G.misses++;
+    let text = h.kind === 'animal' ? h.animal.say : 'Tady nikdo není.';
+    if (G.lv.lantern) {
+      G.lanternLeft--;
+      SFX.dim();
+      renderLantern();
+      const lt = $('lantern'); lt.classList.remove('warn'); void lt.offsetWidth; lt.classList.add('warn');
+      $('dim').style.opacity = (1 - G.lanternLeft / G.lv.lantern) * 0.35;
+      if (G.lanternLeft === 1) text += ' Pozor, lucerna už skoro nesvítí!';
+      if (G.lanternLeft <= 0) { say(text); G.over = true; setTimeout(lose, 1300); return; }
+    }
+    say(text);
+  }
+
+  function flyToSlot(h) {
+    const svg = h.el.querySelector('.creature svg');
+    const slot = nextEmptySlot();
+    if (!svg || !slot) { finishFound(h, slot); return; }
+    const r = svg.getBoundingClientRect();
+    const t = slot.getBoundingClientRect();
+    const fl = document.createElement('div');
+    fl.className = 'flyer';
+    fl.style.left = r.left + 'px'; fl.style.top = r.top + 'px';
+    fl.style.width = r.width + 'px'; fl.style.height = r.height + 'px';
+    fl.innerHTML = devilSVG(h.devil);
+    document.body.appendChild(fl);
+    h.el.querySelector('.creature').innerHTML = '';
+    h.el.classList.remove('up');
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const sc = t.width / r.width;
+      fl.style.transform = `translate(${t.left - r.left}px, ${t.top - r.top}px) scale(${sc})`;
+    }));
+    let done = false;
+    const end = () => { if (done) return; done = true; fl.remove(); finishFound(h, slot); };
+    fl.addEventListener('transitionend', end);
+    setTimeout(end, 1000);
+  }
+
+  function finishFound(h, slot) {
+    h.busy = false;
+    h.el.classList.add('found');
+    h.el.querySelector('.mark').textContent = '✨';
+    if (slot) {
+      slot.classList.remove('empty');
+      slot.innerHTML = devilSVG(h.devil);
+      slot.classList.add('pop');
+    }
+    SFX.collect();
+    if (G.found >= G.lv.devils && !G.over) { G.over = true; setTimeout(win, 500); }
+  }
+
+  function calcStars() {
+    if (G.relit) return 1;
+    const m = G.misses;
+    if (G.lv.lantern) return m <= 1 ? 3 : m <= 2 ? 2 : 1;
+    return m <= 1 ? 3 : m <= 3 ? 2 : 1;
+  }
+
+  function win() {
+    clearInterval(hintTimer); clearTimeout(idleTimer);
+    const stars = calcStars();
+    save.stars[G.level] = Math.max(save.stars[G.level] || 0, stars);
+    persist();
+    SFX.win();
+    confetti();
+    const spans = $('winStars').querySelectorAll('span');
+    spans.forEach(s => s.classList.remove('lit'));
+    spans.forEach((s, k) => { if (k < stars) setTimeout(() => { s.classList.add('lit'); SFX.click(); }, 500 + k * 400); });
+    $('winDance').innerHTML = G.holes.filter(h => h.kind === 'devil').map(h => devilSVG(h.devil)).join('');
+    const nw = G.newIds.length;
+    $('winNew').innerHTML = nw ? `<div class="newbadge">📖 +${nw} ${nw === 1 ? 'nový čertík' : 'noví čertíci'} v albu!</div>` : '';
+    const last = G.level === LEVELS.length - 1;
+    $('btnWinNext').innerHTML = last ? '📖' : '▶';
+    $('btnWinNext').setAttribute('aria-label', last ? 'Album' : 'Další');
+    $('winOverlay').classList.add('on');
+    let text = 'Hurá! Všechny čertíky máme!';
+    if (nw) text += ' Noví kamarádi jsou v albu.';
+    if (last) text += ' Celý jarní les je prohledaný. Jsi skvělá hajná!';
+    say(text, true);
+  }
+
+  function lose() {
+    clearInterval(hintTimer); clearTimeout(idleTimer);
+    $('night').classList.add('on');
+    SFX.lose();
+    setTimeout(SFX.giggle, 700);
+    const left = G.holes.find(h => h.kind === 'devil' && h.state !== 'found');
+    $('loseDevil').innerHTML = devilSVG(left ? left.devil : ROSTER[0], 'laugh');
+    setTimeout(() => {
+      $('loseOverlay').classList.add('on');
+      say('Lucerna zhasla a čertíci se smějí. Zkusíme to znovu?', true);
+    }, 900);
+  }
+
+  function relight() {
+    $('loseOverlay').classList.remove('on');
+    $('night').classList.remove('on');
+    $('dim').style.opacity = 0;
+    G.lanternLeft = G.lv.lantern;
+    G.relit = true;
+    G.over = false;
+    renderLantern();
+    hintTimer = setInterval(updateHints, 150);
+    resetIdle();
+    say('Lucerna zase svítí. Hledej dál!', false);
+    lastSaid = `Najdi ještě ${NUM_ACC[G.lv.devils - G.found]}.`;
+  }
+
+  function closeOverlays() { document.querySelectorAll('.overlay').forEach(o => o.classList.remove('on')); }
+
+  function confetti() {
+    const cols = ['#ff5a5f', '#ffd23f', '#5cc95c', '#3a7bd5', '#e8528a', '#ff9a1f'];
+    for (let k = 0; k < 60; k++) {
+      const c = document.createElement('div');
+      c.className = 'confetti';
+      c.style.left = rand(0, 100) + 'vw';
+      c.style.background = pick(cols);
+      c.style.animationDuration = rand(1.8, 3.5) + 's';
+      c.style.animationDelay = rand(0, 0.8) + 's';
+      c.style.borderRadius = Math.random() < 0.5 ? '50%' : '3px';
+      document.body.appendChild(c);
+      setTimeout(() => c.remove(), 4500);
+    }
+  }
+
+  function leaveGame() {
+    clearInterval(hintTimer); clearTimeout(idleTimer);
+    if (G) G.over = true;
+    closeOverlays();
+    try { speechSynthesis.cancel(); } catch (e) {}
+    show('levels');
+  }
+
+  $('btnLeave').addEventListener('click', () => { SFX.click(); leaveGame(); });
+  $('btnSay').addEventListener('click', () => { SFX.click(); say(lastSaid || 'Najdi všechny čertíky!'); });
+  $('btnWinHome').addEventListener('click', () => { SFX.click(); leaveGame(); });
+  $('btnWinAgain').addEventListener('click', () => { SFX.click(); startLevel(G.level); });
+  $('btnWinNext').addEventListener('click', () => {
+    SFX.click();
+    if (G.level < LEVELS.length - 1) startLevel(G.level + 1);
+    else { closeOverlays(); albumReturn = 'levels'; show('album'); }
+  });
+  $('btnLoseHome').addEventListener('click', () => { SFX.click(); leaveGame(); });
+  $('btnLoseRetry').addEventListener('click', () => { SFX.click(); relight(); });
+
+  document.addEventListener('contextmenu', e => e.preventDefault());
+
+  // pro testování: ?debug odhalí čertíky
+  if (/debug/.test(location.search)) window.__G = () => G;
+})();
+</script>
+</body>
+</html>

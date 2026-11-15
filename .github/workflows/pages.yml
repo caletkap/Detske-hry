@@ -1,0 +1,48 @@
+name: GitHub Pages
+
+# Sestaví web „Dětské hry“ (rozcestník + Dárky pod stromečkem + Čertíci v lese)
+# a zveřejní ho na GitHub Pages při každém pushi do výchozí větve.
+on:
+  push:
+    branches: [main, claude/cloud-environment-setup-ofd54q]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Složit web
+        run: |
+          mkdir -p _site
+          cp -r site/. _site/
+          cp -r dist _site/darky-pod-stromeckem
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

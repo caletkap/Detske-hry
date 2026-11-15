@@ -23,9 +23,17 @@ npm run build && npm run e2e      # průchod celou hrou v prohlížeči (tablet 
 E2E test používá Playwright, který je v cloudovém prostředí předinstalovaný
 (`NODE_PATH=$(npm root -g) npm run e2e`). Snímky obrazovky uloží, když nastavíte `SHOTS=složka`.
 
+## Zveřejnění (GitHub Pages)
+
+Workflow `.github/workflows/pages.yml` při každém pushi do výchozí větve sestaví web
+„Dětské hry“: rozcestník a hra Čertíci v lese ze složky `site/` + build Dárků do
+`darky-pod-stromeckem/`. Adresa: https://caletkap.github.io/Detske-hry/
+
+Jednorázově je potřeba v repozitáři nastavit **Settings → Pages → Source: GitHub Actions**.
+
 ## Instalace na tablet / telefon
 
-Nahrajte obsah `dist/` na libovolný statický hosting (HTTPS), otevřete v prohlížeči
+Otevřete https://caletkap.github.io/Detske-hry/darky-pod-stromeckem/ v prohlížeči
 a zvolte „Přidat na plochu“. Hra pak běží celá offline; profily, postup i nahrávky
 zůstávají jen v zařízení.
 

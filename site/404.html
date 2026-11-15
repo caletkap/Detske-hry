@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dětské hry</title>
+<script>
+  // Překlep v adrese (velká písmena, háčky, chybějící část) → rovnou do správné hry, jinak na rozcestník.
+  (function () {
+    var parts = location.pathname.split('/').filter(Boolean);
+    var base = parts.length ? '/' + parts[0] + '/' : '/';
+    var rest = decodeURIComponent(location.pathname).toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '');
+    if (/cert/.test(rest)) location.replace(base + 'certici-v-lese/');
+    else if (/dar|strom/.test(rest)) location.replace(base + 'darky-pod-stromeckem/');
+    else location.replace(base);
+  })();
+</script>
+</head>
+<body></body>
+</html>
