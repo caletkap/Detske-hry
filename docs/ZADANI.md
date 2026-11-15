@@ -1,6 +1,6 @@
 # Dárky pod stromečkem — zadání hry
 
-Pracovní název. Hra pro dvě dcery (6 let a mladší sestra) na tablet a telefon.
+Pracovní název. Hra pro dvě dcery (6 a 4 roky) na tablet a telefon.
 
 ## 1. Smysl hry
 
@@ -21,7 +21,8 @@ předložky („pod“, „za“, „vedle“) a u starší dcery i čtení krá
 
 ## 3. Pomocník
 
-- Před začátkem každého kola dítě vybere pomocníka: **kočička** (výchozí), **skřítek**, **sob**.
+- Před začátkem každého kola dítě vybere pomocníka: **kočička Tlapička** (výchozí),
+  **skřítek** (jméno zatím nevybrané), **sob Humpal**.
 - Výběr je jedna obrazovka se třemi velkými obrázky; poslední volba je předvybraná,
   takže stačí klepnout na „Hrát“.
 - Pomocníci se liší vzhledem, animacemi a vlastní sadou nahraných hlášek; herně jsou stejní.
@@ -78,7 +79,7 @@ u těžší úrovně i střední), vzor (puntíky, proužky, hvězdičky, bez vz
 | Počítání | — | do 5 | do 10 | porovnávání |
 | Text hádanky | skrytý | volitelný | zobrazen | zobrazen / čtecí režim |
 
-- Úroveň **Nejmenší** je pro mladší dceru (předpoklad 3–4 roky — upřesnit).
+- Úroveň **Nejmenší** je výchozí pro mladší dceru (4 roky), **Lehká** pro starší (6 let).
 - **Adaptivní obtížnost:** 3 kola v řadě bez nápovědy → přitvrdí se jeden parametr;
   2 kola s nápovědou → jeden se zjednoduší. Pohyb jen v rozsahu povoleném rodičem.
 - Rodič může obtížnost pro profil zamknout.
@@ -122,12 +123,18 @@ Pozitivní, bez nátlaku, bez nákupů, reklam a žebříčků.
 - Audio: Web Audio / HTMLAudio, nahrávání přes MediaRecorder, úložiště IndexedDB.
 - Testy: Vitest (logika generování hádanek a obtížnosti), Playwright (hlavní průchody
   na rozlišení tabletu a telefonu).
-- Přístupnost: velké prvky, vysoký kontrast, vypnutelná hudba, respektování
-  „omezit pohyb“.
+- Přístupnost: velké prvky, vysoký kontrast, respektování „omezit pohyb“.
+
+### Hudba a zvuky
+
+- Klidná vánoční hudba na pozadí (originální nebo s volnou licencí, ve smyčce).
+- Při mluvení pomocníka se hudba automaticky ztiší.
+- Rodičovská zóna: zvlášť hlasitost hudby, zvuků a hlasu; hudbu lze vypnout.
 
 ## 11. MVP (první verze)
 
-1. Výběr profilu (2 profily) a pomocníka (kočička výchozí).
+1. Výběr profilu (2 profily) a pomocníka (kočička Tlapička výchozí).
+   Hudba na pozadí.
 2. Minihry 1 (Najdi podle popisu) a 2 (Schovávaná), úrovně Nejmenší–Střední.
 3. Nápověda, hvězdičky, zdobení vlastního stromečku.
 4. Rodičovská zóna: profily, obtížnost, nahrávání hlášek, záložní syntetický hlas.
@@ -138,6 +145,4 @@ minihry 3–6, export/import zálohy, přehled pro rodiče.
 
 ## 12. Otevřené otázky
 
-- Kolik let je mladší dceři? (Ověřit, zda úroveň Nejmenší sedí.)
-- Hudba na pozadí ano/ne?
-- Jména pomocníků (např. kočička Micka)?
+- Jméno skřítka.
