@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="0" fill="#14284b"/>
+  <circle cx="256" cy="230" r="230" fill="#24497a"/>
+  <path d="M256 60 L360 190 L320 190 L390 300 L330 300 L410 410 L102 410 L182 300 L122 300 L192 190 L152 190Z" fill="#2d8a4e" stroke="#1b5e33" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M256 30 L267 58 L297 58 L273 76 L282 104 L256 87 L230 104 L239 76 L215 58 L245 58Z" fill="#ffd23f" stroke="#d19b00" stroke-width="5" stroke-linejoin="round"/>
+  <circle cx="220" cy="200" r="13" fill="#e63946"/><circle cx="300" cy="260" r="13" fill="#3a86ff"/><circle cx="200" cy="330" r="13" fill="#ffd23f"/><circle cx="320" cy="360" r="13" fill="#ff70a6"/>
+  <g transform="translate(300 360)">
+    <rect x="0" y="40" width="130" height="100" rx="8" fill="#e63946" stroke="#a4161a" stroke-width="8"/>
+    <rect x="-10" y="20" width="150" height="30" rx="8" fill="#e63946" stroke="#a4161a" stroke-width="8"/>
+    <rect x="55" y="20" width="20" height="120" fill="#f7b801"/>
+    <path d="M65 20 C45 -14 10 -6 18 12 C24 26 50 24 65 20Z M65 20 C85 -14 120 -6 112 12 C106 26 80 24 65 20Z" fill="#f7b801" stroke="#a87400" stroke-width="5"/>
+  </g>
+  <g transform="translate(70 400)">
+    <rect x="0" y="0" width="90" height="70" rx="6" fill="#3a86ff" stroke="#1d4ed8" stroke-width="7"/>
+    <rect x="38" y="0" width="14" height="70" fill="#fff"/>
+  </g>
+</svg>

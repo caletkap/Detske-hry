@@ -22,7 +22,7 @@ předložky („pod“, „za“, „vedle“) a u starší dcery i čtení krá
 ## 3. Pomocník
 
 - Před začátkem každého kola dítě vybere pomocníka: **kočička Tlapička** (výchozí),
-  **skřítek** (jméno zatím nevybrané), **sob Humpal**.
+  **skřítek Cinkálek**, **sob Humpal**.
 - Výběr je jedna obrazovka se třemi velkými obrázky; poslední volba je předvybraná,
   takže stačí klepnout na „Hrát“.
 - Pomocníci se liší vzhledem, animacemi a vlastní sadou nahraných hlášek; herně jsou stejní.
@@ -131,7 +131,7 @@ Pozitivní, bez nátlaku, bez nákupů, reklam a žebříčků.
 - Při mluvení pomocníka se hudba automaticky ztiší.
 - Rodičovská zóna: zvlášť hlasitost hudby, zvuků a hlasu; hudbu lze vypnout.
 
-## 11. MVP (první verze)
+## 11. MVP (první verze) — ✅ hotovo
 
 1. Výběr profilu (2 profily) a pomocníka (kočička Tlapička výchozí).
    Hudba na pozadí.
@@ -145,4 +145,4 @@ minihry 3–6, export/import zálohy, přehled pro rodiče.
 
 ## 12. Otevřené otázky
 
-- Jméno skřítka.
+- Žádné.
