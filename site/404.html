@@ -12,6 +12,8 @@
     var rest = decodeURIComponent(location.pathname).toLowerCase()
       .normalize('NFD').replace(/[̀-ͯ]/g, '');
     if (/cert/.test(rest)) location.replace(base + 'certici-v-lese/');
+    else if (/lisk|kurn/.test(rest)) location.replace(base + 'liska-u-kurniku/');
+    else if (/burg|posklad/.test(rest)) location.replace(base + 'poskladej-burger/');
     else if (/dar|strom/.test(rest)) location.replace(base + 'darky-pod-stromeckem/');
     else location.replace(base);
   })();
