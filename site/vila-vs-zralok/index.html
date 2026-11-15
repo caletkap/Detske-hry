@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Mořská víla vs. žralok</title>
+<style>
+  :root {
+    --deep: #06222f;
+    --deep2: #0a3548;
+    --foam: #eaf7f6;
+    --coral: #ff8a65;
+    --pearl: #ffe9a8;
+    --teal: #2fbfae;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--deep);
+    font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+    color: var(--foam);
+    overflow: hidden;
+  }
+  #wrap {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 10px;
+  }
+  h1 {
+    margin: 6px 0 2px 0;
+    font-size: 1.4rem;
+    letter-spacing: 0.5px;
+    color: var(--pearl);
+    text-shadow: 0 0 12px rgba(255,233,168,0.4);
+  }
+  #hud {
+    display: flex; gap: 24px; align-items: center;
+    font-size: 1rem;
+  }
+  .hud-item { display: flex; align-items: center; gap: 6px; }
+  #hearts { display: flex; gap: 4px; }
+  .heart { width: 16px; height: 16px; }
+  canvas {
+    background: linear-gradient(180deg, #0d4a63 0%, #06222f 70%, #041721 100%);
+    border-radius: 14px;
+    box-shadow: 0 0 0 2px rgba(234,247,246,0.15), 0 20px 60px rgba(0,0,0,0.5);
+    touch-action: none;
+    display: block;
+    width: auto; height: auto;
+    max-width: 96vw;
+    max-height: calc(100dvh - 150px);
+  }
+  #hint {
+    font-size: 0.85rem;
+    color: rgba(234,247,246,0.7);
+    text-align: center;
+    max-width: 480px;
+  }
+  #overlay {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(4,23,33,0.82);
+    flex-direction: column;
+    gap: 14px;
+    text-align: center;
+    padding: 20px;
+  }
+  #overlay.show { display: flex; }
+  #overlay h2 { margin: 0; font-size: 1.6rem; color: var(--pearl); }
+  #overlay p { margin: 0; opacity: 0.85; max-width: 380px; }
+  button#restart {
+    padding: 10px 22px;
+    border: none;
+    border-radius: 999px;
+    background: var(--teal);
+    color: #04211d;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(47,191,174,0.4);
+  }
+  button#restart:active { transform: translateY(1px); }
+  #stage {
+    position: relative;
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>🧜‍♀️ Mořská víla proti žralokovi 🦈</h1>
+  <div id="hud">
+    <div class="hud-item">❤️ <span id="hp">3</span></div>
+    <div class="hud-item">✨ <span id="score">0</span></div>
+    <div class="hud-item">🐚 <span id="wave">Vlna 1</span></div>
+  </div>
+  <div id="stage">
+    <canvas id="game" width="480" height="640"></canvas>
+    <div id="overlay">
+      <h2 id="overTitle">Konec hry</h2>
+      <p id="overText">Žralok tě dostal. Zkus to znovu!</p>
+      <button id="restart">Zkusit znovu</button>
+    </div>
+  </div>
+  <div id="hint">Šipky / WASD = plavání, MEZERNÍK = vystřelit perlu. Na mobilu: táhni prstem po vodě a klepni pro výstřel.</div>
+</div>
+
+<script>
+(function(){
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  const hpEl = document.getElementById('hp');
+  const scoreEl = document.getElementById('score');
+  const waveEl = document.getElementById('wave');
+  const overlay = document.getElementById('overlay');
+  const overTitle = document.getElementById('overTitle');
+  const overText = document.getElementById('overText');
+  const restartBtn = document.getElementById('restart');
+
+  let keys = {};
+  window.addEventListener('keydown', e => {
+    keys[e.key.toLowerCase()] = true;
+    if (e.key === ' ') { e.preventDefault(); shoot(); }
+  });
+  window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+  // touch controls
+  let touchTarget = null;
+  canvas.addEventListener('touchstart', e => {
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches[0];
+    touchTarget = { x: (t.clientX - r.left) * (W / r.width), y: (t.clientY - r.top) * (H / r.height) };
+    shoot();
+  }, {passive:true});
+  canvas.addEventListener('touchmove', e => {
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches[0];
+    touchTarget = { x: (t.clientX - r.left) * (W / r.width), y: (t.clientY - r.top) * (H / r.height) };
+  }, {passive:true});
+  canvas.addEventListener('touchend', () => touchTarget = null);
+
+  let bubbles = [];
+  for (let i=0;i<40;i++){
+    bubbles.push({x: Math.random()*W, y: Math.random()*H, r: 1+Math.random()*3, s: 0.3+Math.random()*0.8});
+  }
+
+  const mermaid = {
+    x: W/2, y: H - 90, w: 46, h: 34,
+    speed: 4.2, invuln: 0
+  };
+
+  let pearls = [];
+  let sharks = [];
+  let particles = [];
+  let hp = 3;
+  let score = 0;
+  let wave = 1;
+  let gameOver = false;
+  let shootCooldown = 0;
+  let spawnTimer = 0;
+  let tailPhase = 0;
+
+  function spawnShark(hardness){
+    const fromLeft = Math.random() < 0.5;
+    sharks.push({
+      x: fromLeft ? -60 : W + 60,
+      y: 60 + Math.random() * 220,
+      w: 70, h: 34,
+      dir: fromLeft ? 1 : -1,
+      speed: 1.1 + hardness * 0.25 + Math.random()*0.4,
+      hp: 1 + Math.floor((hardness-1)/2),
+      maxHp: 1 + Math.floor((hardness-1)/2),
+      wobble: Math.random()*Math.PI*2,
+      bite: 0
+    });
+  }
+
+  function shoot(){
+    if (gameOver || shootCooldown > 0) return;
+    shootCooldown = 9;
+    pearls.push({x: mermaid.x, y: mermaid.y - 20, vy: -9});
+  }
+
+  function reset(){
+    hp = 3; score = 0; wave = 1; gameOver = false;
+    sharks = []; pearls = []; particles = [];
+    mermaid.x = W/2; mermaid.y = H - 90; mermaid.invuln = 90;
+    spawnTimer = 30;
+    overlay.classList.remove('show');
+    updateHud();
+  }
+
+  function updateHud(){
+    hpEl.textContent = hp;
+    scoreEl.textContent = score;
+    waveEl.textContent = 'Vlna ' + wave;
+  }
+
+  function endGame(win){
+    gameOver = true;
+    overTitle.textContent = win ? 'Vítězství!' : 'Konec hry';
+    overText.textContent = win
+      ? 'Porazila jsi žraloky a ochránila korálový útes! Skóre: ' + score
+      : 'Žralok tě dostal. Skóre: ' + score + '. Zkus to znovu!';
+    overlay.classList.add('show');
+  }
+
+  function makeSplash(x,y,color){
+    for (let i=0;i<10;i++){
+      particles.push({
+        x, y,
+        vx: (Math.random()-0.5)*4,
+        vy: (Math.random()-0.5)*4,
+        life: 24, color
+      });
+    }
+  }
+
+  function update(){
+    if (gameOver) return;
+
+    // movement
+    let dx = 0, dy = 0;
+    if (keys['arrowleft'] || keys['a']) dx -= 1;
+    if (keys['arrowright'] || keys['d']) dx += 1;
+    if (keys['arrowup'] || keys['w']) dy -= 1;
+    if (keys['arrowdown'] || keys['s']) dy += 1;
+
+    if (touchTarget){
+      dx = touchTarget.x - mermaid.x;
+      dy = touchTarget.y - mermaid.y;
+      const len = Math.hypot(dx,dy) || 1;
+      dx /= len; dy /= len;
+      if (Math.hypot(touchTarget.x-mermaid.x, touchTarget.y-mermaid.y) < 4){ dx=0; dy=0; }
+    }
+
+    const len = Math.hypot(dx,dy);
+    if (len > 0){
+      mermaid.x += (dx/len) * mermaid.speed;
+      mermaid.y += (dy/len) * mermaid.speed;
+      tailPhase += 0.25;
+    } else {
+      tailPhase += 0.06;
+    }
+    mermaid.x = Math.max(30, Math.min(W-30, mermaid.x));
+    mermaid.y = Math.max(60, Math.min(H-30, mermaid.y));
+
+    if (shootCooldown > 0) shootCooldown--;
+    if (mermaid.invuln > 0) mermaid.invuln--;
+
+    // pearls
+    pearls.forEach(p => p.y += p.vy);
+    pearls = pearls.filter(p => p.y > -20);
+
+    // spawn sharks
+    spawnTimer--;
+    if (spawnTimer <= 0 && sharks.length < 3 + wave){
+      spawnShark(wave);
+      spawnTimer = Math.max(50, 110 - wave*8);
+    }
+
+    // sharks move
+    sharks.forEach(s => {
+      s.x += s.speed * s.dir;
+      s.wobble += 0.08;
+      s.y += Math.sin(s.wobble) * 0.6;
+      if (s.bite > 0) s.bite--;
+    });
+
+    // pearl vs shark collision
+    for (let si = sharks.length-1; si >= 0; si--){
+      const s = sharks[si];
+      for (let pi = pearls.length-1; pi >= 0; pi--){
+        const p = pearls[pi];
+        if (Math.abs(p.x - s.x) < s.w/2 && Math.abs(p.y - s.y) < s.h/2){
+          pearls.splice(pi,1);
+          s.hp--;
+          makeSplash(p.x, p.y, '#ffe9a8');
+          if (s.hp <= 0){
+            score += 10 + wave*2;
+            makeSplash(s.x, s.y, '#ff8a65');
+            sharks.splice(si,1);
+          }
+          break;
+        }
+      }
+    }
+
+    // shark vs mermaid
+    if (mermaid.invuln <= 0){
+      for (let si = sharks.length-1; si >= 0; si--){
+        const s = sharks[si];
+        if (Math.abs(mermaid.x - s.x) < (s.w+mermaid.w)/2 - 10 &&
+            Math.abs(mermaid.y - s.y) < (s.h+mermaid.h)/2 - 6){
+          hp--;
+          mermaid.invuln = 90;
+          makeSplash(mermaid.x, mermaid.y, '#ff5252');
+          s.bite = 20;
+          if (hp <= 0){
+            endGame(false);
+          }
+          break;
+        }
+      }
+    }
+
+    // sharks off-screen removal (missed)
+    sharks = sharks.filter(s => s.x > -120 && s.x < W+120);
+
+    // wave clear -> next wave
+    if (score >= wave * 60 && wave < 5){
+      wave++;
+    }
+    if (wave >= 5 && score >= 5*60){
+      endGame(true);
+    }
+
+    // particles
+    particles.forEach(pt => { pt.x += pt.vx; pt.y += pt.vy; pt.life--; });
+    particles = particles.filter(pt => pt.life > 0);
+
+    // bubbles
+    bubbles.forEach(b => {
+      b.y -= b.s;
+      if (b.y < -5){ b.y = H+5; b.x = Math.random()*W; }
+    });
+
+    updateHud();
+  }
+
+  function drawMermaid(){
+    ctx.save();
+    ctx.translate(mermaid.x, mermaid.y);
+    if (mermaid.invuln > 0 && Math.floor(mermaid.invuln/6)%2===0){
+      ctx.globalAlpha = 0.4;
+    }
+    const swish = Math.sin(tailPhase) * 8;
+
+    // tail
+    ctx.fillStyle = '#2fbfae';
+    ctx.beginPath();
+    ctx.moveTo(0, 6);
+    ctx.quadraticCurveTo(10, 20, 4+swish*0.4, 34);
+    ctx.quadraticCurveTo(0, 26, -4+swish*0.4, 34);
+    ctx.quadraticCurveTo(-10, 20, 0, 6);
+    ctx.fill();
+
+    // fin flare
+    ctx.fillStyle = '#7fe3d4';
+    ctx.beginPath();
+    ctx.moveTo(4+swish*0.4, 34);
+    ctx.lineTo(14+swish, 40);
+    ctx.lineTo(2+swish*0.4, 36);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-4+swish*0.4, 34);
+    ctx.lineTo(-14+swish, 40);
+    ctx.lineTo(-2+swish*0.4, 36);
+    ctx.fill();
+
+    // body
+    ctx.fillStyle = '#ffd9b3';
+    ctx.beginPath();
+    ctx.ellipse(0, -6, 9, 14, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // top (shell bra)
+    ctx.fillStyle = '#ff8a65';
+    ctx.beginPath();
+    ctx.arc(-4, -10, 4, 0, Math.PI*2);
+    ctx.arc(4, -10, 4, 0, Math.PI*2);
+    ctx.fill();
+
+    // hair
+    ctx.fillStyle = '#c2410c';
+    ctx.beginPath();
+    ctx.ellipse(0, -20, 8, 10, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-7,-18); ctx.quadraticCurveTo(-14,-4,-9,10); ctx.quadraticCurveTo(-10,-6,-7,-18);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(7,-18); ctx.quadraticCurveTo(14,-4,9,10); ctx.quadraticCurveTo(10,-6,7,-18);
+    ctx.fill();
+
+    // face
+    ctx.fillStyle = '#2a1810';
+    ctx.beginPath(); ctx.arc(-3,-21,1.3,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(3,-21,1.3,0,Math.PI*2); ctx.fill();
+
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
+  function drawShark(s){
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.scale(s.dir, 1);
+    if (s.bite > 0) ctx.translate(Math.sin(s.bite)*2, 0);
+
+    // body
+    ctx.fillStyle = '#5b7c8d';
+    ctx.beginPath();
+    ctx.moveTo(-35, 0);
+    ctx.quadraticCurveTo(-10,-16, 30, 0);
+    ctx.quadraticCurveTo(-10,16, -35, 0);
+    ctx.fill();
+
+    // dorsal fin
+    ctx.beginPath();
+    ctx.moveTo(-2,-14);
+    ctx.lineTo(6,-30);
+    ctx.lineTo(10,-13);
+    ctx.fill();
+
+    // tail fin
+    ctx.beginPath();
+    ctx.moveTo(-32,0);
+    ctx.lineTo(-46,-12);
+    ctx.lineTo(-40,0);
+    ctx.lineTo(-46,12);
+    ctx.fill();
+
+    // belly
+    ctx.fillStyle = '#dfeff2';
+    ctx.beginPath();
+    ctx.moveTo(-25,4);
+    ctx.quadraticCurveTo(-5,14,24,3);
+    ctx.quadraticCurveTo(-5,10,-25,4);
+    ctx.fill();
+
+    // eye
+    ctx.fillStyle = '#0a1a1f';
+    ctx.beginPath(); ctx.arc(20,-4,1.6,0,Math.PI*2); ctx.fill();
+
+    // mouth/teeth
+    ctx.strokeStyle = '#0a1a1f';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(14,4); ctx.quadraticCurveTo(24,8,29,2); ctx.stroke();
+
+    // hp pips
+    ctx.restore();
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    for (let i=0;i<s.maxHp;i++){
+      ctx.beginPath();
+      ctx.arc(s.x - (s.maxHp-1)*5 + i*10, s.y - 26, i < s.hp ? 3 : 1.6, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+
+    // light rays
+    const grad = ctx.createLinearGradient(0,0,0,H);
+    grad.addColorStop(0, 'rgba(255,255,255,0.06)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,W,H);
+
+    // bubbles
+    ctx.fillStyle = 'rgba(234,247,246,0.5)';
+    bubbles.forEach(b => {
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI*2);
+      ctx.fill();
+    });
+
+    // seabed
+    ctx.fillStyle = '#0c2e3d';
+    ctx.beginPath();
+    ctx.moveTo(0,H);
+    ctx.lineTo(0,H-24);
+    for (let x=0;x<=W;x+=24){
+      ctx.quadraticCurveTo(x+12, H-40, x+24, H-24);
+    }
+    ctx.lineTo(W,H);
+    ctx.fill();
+
+    pearls.forEach(p => {
+      ctx.fillStyle = '#ffe9a8';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 4, 0, Math.PI*2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+      ctx.stroke();
+    });
+
+    sharks.forEach(drawShark);
+    drawMermaid();
+
+    particles.forEach(pt => {
+      ctx.globalAlpha = Math.max(pt.life/24, 0);
+      ctx.fillStyle = pt.color;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, 3, 0, Math.PI*2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+  }
+
+  function loop(){
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  restartBtn.addEventListener('click', reset);
+
+  reset();
+  loop();
+})();
+</script>
+</body>
+</html>

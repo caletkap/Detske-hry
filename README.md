@@ -26,7 +26,8 @@ E2E test používá Playwright, který je v cloudovém prostředí předinstalov
 ## Zveřejnění (GitHub Pages)
 
 Workflow `.github/workflows/pages.yml` při každém pushi do výchozí větve sestaví web
-„Dětské hry“: rozcestník a hry Čertíci v lese, Liška u kurníku, Poskládej burger a Zvířecí farma
+„Dětské hry“: rozcestník a hry Čertíci v lese, Liška u kurníku, Poskládej burger, Zvířecí farma,
+Mořské víly a Víla proti žralokovi
 ze složky `site/` + build Dárků do `darky-pod-stromeckem/`. Adresa: https://caletkap.github.io/Detske-hry/
 
 Jednorázově je potřeba v repozitáři nastavit **Settings → Pages → Source: GitHub Actions**.
