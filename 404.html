@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dětské hry</title>
+<script>
+  // Překlep v adrese (velká písmena, háčky, chybějící část) → rovnou do hry.
+  (function () {
+    var parts = location.pathname.split('/').filter(Boolean);
+    var base = parts.length ? '/' + parts[0] + '/' : '/';
+    var rest = decodeURIComponent(location.pathname).toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '');
+    if (/cert/.test(rest) || parts.length <= 1) {
+      location.replace(base + 'certici-v-lese/');
+    }
+    window.__base = base;
+  })();
+</script>
+<style>
+  body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+    font-family: "Comic Sans MS", "Trebuchet MS", system-ui, sans-serif; background: linear-gradient(#8fd3f4, #dff4ff); color: #3b2412; padding: 16px; box-sizing: border-box; text-align: center; }
+  a { background: #fff; border-radius: 26px; padding: 16px 26px; text-decoration: none; color: #3b2412; font-size: 28px; box-shadow: 0 6px 0 rgba(0,0,0,.15); }
+</style>
+</head>
+<body>
+  <div style="font-size:64px">🌲😈🌲</div>
+  <a id="go" href="/Detske-hry/certici-v-lese/">▶ Čertíci v lese</a>
+  <script>document.getElementById('go').href = window.__base + 'certici-v-lese/';</script>
+</body>
+</html>
