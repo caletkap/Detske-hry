@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Zvířátka utekla z farmy</title>
+<style>
+  :root {
+    --trava: #6FAE3E; --trava2: #97CC5C; --nebe: #92D7F0;
+    --stodola: #B8392F; --seno: #F5C444; --inkoust: #2B2418;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+    color: var(--inkoust); user-select: none;
+  }
+  #app { position: relative; height: 100dvh; display: flex; flex-direction: column; }
+
+  header {
+    flex: 0 0 auto; background: var(--seno); padding: 9px 14px;
+    display: flex; align-items: center; gap: 10px;
+    font-weight: bold; font-size: 19px;
+  }
+  header .roste { flex: 1 1 auto; }
+  #zvuk, #zpet {
+    border: none; background: rgba(255,255,255,.55); border-radius: 999px;
+    width: 42px; height: 42px; font-size: 20px; cursor: pointer;
+  }
+
+  #pasCas { flex: 0 0 auto; height: 30px; position: relative; background: #D9A62C; border-bottom: 4px solid #B8891F; }
+  #vypln { position: absolute; inset: 0 auto 0 0; width: 100%; background: var(--trava); transition: background .3s; }
+  #cisloCas {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-size: 17px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.45);
+  }
+  #pasCas.malo #vypln { background: #E2622F; }
+  #pasCas.malo #cisloCas { animation: tluk .5s infinite; }
+  @keyframes tluk { 0%,100% { transform: scale(1) } 50% { transform: scale(1.22) } }
+
+  #pole {
+    flex: 1 1 auto; position: relative; overflow: hidden;
+    background: linear-gradient(var(--nebe) 0 18%, var(--trava2) 18% 40%, var(--trava) 40% 100%);
+  }
+  .ker { position: absolute; font-size: 34px; opacity: .85; pointer-events: none; }
+
+  #stodola {
+    position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
+    width: 140px; height: 92px; pointer-events: none;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  }
+  #strecha { width: 0; height: 0; border-left: 70px solid transparent; border-right: 70px solid transparent; border-bottom: 34px solid #8E2B23; }
+  #zdi { width: 118px; height: 58px; background: var(--stodola); display: flex; align-items: flex-end; justify-content: center; border-radius: 4px 4px 0 0; }
+  #dvere { width: 46px; height: 40px; background: #6B1F19; border-radius: 23px 23px 0 0; box-shadow: inset 0 0 0 3px #E8D9B0; }
+  #stodola.otevreno #dvere { background: #2B1310; }
+
+  .zvire {
+    position: absolute; top: 0; left: 0; width: 78px; height: 78px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 54px; line-height: 1; cursor: pointer; will-change: transform;
+  }
+  .zvire span { display: block; animation: hop .5s infinite ease-in-out; }
+  @keyframes hop { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-7px) } }
+  .zvire.chyceno { transition: transform .55s cubic-bezier(.4,0,.6,1), opacity .55s; opacity: 0; }
+  .zvire.chyceno span, .zvire.schovano span { animation: none; }
+  .zvire.schovano { transition: transform .5s, opacity .5s; opacity: 0; }
+
+  .jiskra { position: absolute; font-size: 34px; pointer-events: none; animation: jiskri .7s forwards; }
+  @keyframes jiskri { from { transform: scale(.4); opacity: 1 } to { transform: scale(1.8) translateY(-30px); opacity: 0 } }
+
+  #clona { position: absolute; inset: 0; display: none; background: rgba(43,36,24,.72); align-items: center; justify-content: center; padding: 20px; overflow: auto; }
+  #clona.vidno { display: flex; }
+  #karta {
+    background: #FFF7E2; border-radius: 26px; padding: 24px 22px; text-align: center;
+    max-width: 360px; width: 100%; border: 5px solid var(--seno);
+  }
+  #karta h1 { font-size: 28px; margin: 0 0 6px; line-height: 1.15; }
+  #karta p { font-size: 17px; margin: 0 0 16px; }
+  #karta .zviratka { font-size: 38px; margin-bottom: 8px; }
+
+  #urovne { display: flex; gap: 8px; margin-bottom: 14px; }
+  .uroven {
+    flex: 1; border: 3px solid #E4CF9A; background: #fff; border-radius: 18px;
+    padding: 10px 4px; font: inherit; font-weight: bold; font-size: 14px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--inkoust);
+  }
+  .uroven .ikona { font-size: 26px; }
+  .uroven small { font-weight: normal; opacity: .6; font-size: 11px; }
+  .uroven.zvolena { border-color: var(--trava); background: #EAF7DC; box-shadow: 0 0 0 3px rgba(111,174,62,.25); }
+
+  #hrat {
+    border: none; background: var(--trava); color: #fff; font: inherit; font-size: 24px; font-weight: bold;
+    padding: 17px 30px; border-radius: 999px; width: 100%; box-shadow: 0 5px 0 #4E8A28; cursor: pointer;
+  }
+  #hrat:active { transform: translateY(4px); box-shadow: 0 1px 0 #4E8A28; }
+  #rekord { margin-top: 12px; font-size: 14px; opacity: .7; }
+
+  .odkaz {
+    border: none; background: none; font: inherit; font-size: 15px; font-weight: bold;
+    color: #8A5A12; text-decoration: underline; cursor: pointer; padding: 6px; margin-bottom: 10px;
+  }
+
+  /* --- studio nahrávání --- */
+  #studio {
+    position: absolute; inset: 0; display: none; z-index: 20;
+    background: rgba(43,36,24,.88); padding: 14px;
+  }
+  #studio.vidno { display: flex; flex-direction: column; }
+  #studioKarta {
+    background: #FFF7E2; border-radius: 22px; border: 5px solid var(--seno);
+    display: flex; flex-direction: column; max-height: 100%; width: 100%; max-width: 420px;
+    margin: auto; overflow: hidden;
+  }
+  #studioHlavicka {
+    display: flex; align-items: center; gap: 10px; padding: 14px 16px 6px;
+    flex: 0 0 auto;
+  }
+  #studioHlavicka h2 { font-size: 20px; margin: 0; flex: 1; }
+  #zavriStudio {
+    border: none; background: rgba(0,0,0,.08); border-radius: 999px;
+    width: 36px; height: 36px; font-size: 18px; cursor: pointer;
+  }
+  .napoveda { font-size: 14px; opacity: .75; margin: 0 16px 10px; }
+  #seznamZvireat { overflow-y: auto; padding: 0 12px 14px; flex: 1 1 auto; }
+  .radekZvire {
+    display: flex; align-items: center; gap: 10px;
+    background: #fff; border-radius: 16px; padding: 8px 10px; margin-bottom: 8px;
+    border: 2px solid #EEE0BE;
+  }
+  .radekZvire.hotovo { border-color: var(--trava); background: #F2FAEA; }
+  .ikonaJm { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; font-weight: bold; font-size: 15px; }
+  .ikonaJm .emoji { font-size: 30px; }
+  .ovladani { display: flex; gap: 6px; flex: 0 0 auto; }
+  .tlBtn {
+    border: none; border-radius: 999px; width: 42px; height: 42px; font-size: 18px;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .tlNahrat { background: var(--stodola); color: #fff; }
+  .tlNahrat.aktivni { background: #E2622F; animation: pulz .9s infinite; }
+  @keyframes pulz { 0%,100% { box-shadow: 0 0 0 0 rgba(226,98,47,.6) } 50% { box-shadow: 0 0 0 9px rgba(226,98,47,0) } }
+  .tlPrehrat { background: var(--trava); color: #fff; }
+  .tlSmazat { background: #E9DCC0; color: var(--inkoust); font-size: 15px; }
+
+  @media (prefers-reduced-motion: reduce) { .zvire span, #pasCas.malo #cisloCas, .tlNahrat.aktivni { animation: none; } }
+</style>
+
+<div id="app">
+  <header>
+    <div>🚜 Kolo <span id="kolo">1</span></div>
+    <div class="roste">🏠 <span id="doma">0</span>/<span id="celkem">3</span></div>
+    <button id="zpet" aria-label="Zpět na výběr">⏸</button>
+    <button id="zvuk" aria-label="Zvuk">🔊</button>
+  </header>
+
+  <div id="pasCas"><div id="vypln"></div><div id="cisloCas">18</div></div>
+
+  <div id="pole">
+    <div id="stodola"><div id="strecha"></div><div id="zdi"><div id="dvere"></div></div></div>
+  </div>
+
+  <div id="clona" class="vidno">
+    <div id="karta">
+      <div class="zviratka">🐷 🐑 🐮 🐔</div>
+      <h1>Zvířátka utekla z farmy!</h1>
+      <p>Chytej je prstem, než vyprší čas.</p>
+      <button id="otevriStudio" class="odkaz">🎤 Nahrát vlastní zvuky (<span id="pocetNahranych">0</span>/10)</button>
+      <div id="urovne">
+        <button class="uroven" data-ur="lehka"><span class="ikona">🐣</span>Lehká<small>pomalu</small></button>
+        <button class="uroven zvolena" data-ur="stredni"><span class="ikona">🐤</span>Střední<small>svižně</small></button>
+        <button class="uroven" data-ur="tezka"><span class="ikona">🐓</span>Těžká<small>fofr</small></button>
+      </div>
+      <button id="hrat">Začít</button>
+      <div id="rekord"></div>
+    </div>
+  </div>
+
+  <div id="studio">
+    <div id="studioKarta">
+      <div id="studioHlavicka">
+        <h2>🎤 Nahraj zvuky zvířat</h2>
+        <button id="zavriStudio" aria-label="Zavřít">✕</button>
+      </div>
+      <p class="napoveda">Ťukni na mikrofon a řekni, jak zvířátko dělá (např. „chro chro“). Nahrávání se samo zastaví po 3 vteřinách.</p>
+      <div id="seznamZvireat"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DRUHY = ['🐷','🐑','🐮','🐔','🐴','🐐','🐰','🦆','🦃','🐕'];
+const ID_PODLE_EMOJI = { '🐷':'prase','🐑':'ovce','🐮':'krava','🐔':'slepice','🐴':'kun','🐐':'koza','🐰':'kralik','🦆':'kachna','🦃':'krocan','🐕':'pes' };
+const NAZVY = { prase:'Prase', ovce:'Ovce', krava:'Kráva', slepice:'Slepice', kun:'Kůň', koza:'Koza', kralik:'Králík', kachna:'Kachna', krocan:'Krocan', pes:'Pes' };
+
+const OBTIZNOSTI = {
+  lehka:   { nazev: 'Lehká',   zaklad: 24, prirustek: 6,  pocet0: 2, maxPocet: 5, casKus: 6, casBonus: 12 },
+  stredni: { nazev: 'Střední', zaklad: 38, prirustek: 12, pocet0: 2, maxPocet: 7, casKus: 4, casBonus: 9  },
+  tezka:   { nazev: 'Těžká',   zaklad: 55, prirustek: 22, pocet0: 3, maxPocet: 9, casKus: 3, casBonus: 6  }
+};
+let obtiznost = 'stredni';
+
+const pole = document.getElementById('pole');
+const clona = document.getElementById('clona');
+const karta = document.getElementById('karta');
+const hrat = document.getElementById('hrat');
+const stodola = document.getElementById('stodola');
+const elKolo = document.getElementById('kolo');
+const elDoma = document.getElementById('doma');
+const elCelkem = document.getElementById('celkem');
+const btnZvuk = document.getElementById('zvuk');
+const btnZpet = document.getElementById('zpet');
+const pasCas = document.getElementById('pasCas');
+const vypln = document.getElementById('vypln');
+const cisloCas = document.getElementById('cisloCas');
+const otevriStudio = document.getElementById('otevriStudio');
+const zavriStudio = document.getElementById('zavriStudio');
+const studio = document.getElementById('studio');
+const seznamZvireat = document.getElementById('seznamZvireat');
+const pocetNahranychEl = document.getElementById('pocetNahranych');
+
+let zvirata = [], kolo = 1, doma = 0, celkem = 3, bezi = false;
+let zvukZap = true, rekordy = {}, cas = 0, casMax = 0, posledniTik = -1;
+
+/* ---------- vlastní nahrávky ---------- */
+let nahravky = {};        // id zvířete -> data URL se zvukem
+let aktivniId = null;     // které zvíře se právě nahrává
+let mediaRecorder = null;
+let recChunks = [];
+let casovacNahravani = null;
+
+function blobNaDataUrl(blob) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = rej;
+    r.readAsDataURL(blob);
+  });
+}
+
+async function zahajNahravani(id) {
+  if (aktivniId) return; // už něco nahráváme
+  if (!navigator.mediaDevices || !window.MediaRecorder) {
+    alert('Nahrávání zvuku tenhle prohlížeč nepodporuje.');
+    return;
+  }
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    alert('Nepodařilo se získat přístup k mikrofonu. Zkontroluj povolení mikrofonu pro tuto stránku.');
+    return;
+  }
+  aktivniId = id;
+  recChunks = [];
+  vykresliStudio();
+  let mime = 'audio/webm';
+  if (!(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(mime))) mime = '';
+  try {
+    mediaRecorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+  } catch (e) {
+    mediaRecorder = new MediaRecorder(stream);
+  }
+  mediaRecorder.ondataavailable = e => { if (e.data && e.data.size > 0) recChunks.push(e.data); };
+  mediaRecorder.onstop = async () => {
+    stream.getTracks().forEach(t => t.stop());
+    const blob = new Blob(recChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+    if (blob.size > 0) {
+      try {
+        const dataUrl = await blobNaDataUrl(blob);
+        nahravky[id] = dataUrl;
+        ulozNahravku(id, dataUrl);
+      } catch (e) {}
+    }
+    aktivniId = null;
+    vykresliStudio();
+    ukazPocetNahranych();
+  };
+  mediaRecorder.start();
+  casovacNahravani = setTimeout(() => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+  }, 3000);
+}
+function ukonciNahravani() {
+  clearTimeout(casovacNahravani);
+  if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+}
+function prehrajNahravku(id) {
+  if (!nahravky[id]) return;
+  try { new Audio(nahravky[id]).play().catch(() => {}); } catch (e) {}
+}
+function smazNahravku(id) {
+  delete nahravky[id];
+  vykresliStudio();
+  ukazPocetNahranych();
+  try { localStorage.removeItem('farma-zvuk-' + id); } catch (e) {}
+}
+function ulozNahravku(id, dataUrl) {
+  try {
+    localStorage.setItem('farma-zvuk-' + id, dataUrl);
+    const zpet = localStorage.getItem('farma-zvuk-' + id);
+    if (zpet !== dataUrl) throw new Error('prohlížeč uložení potichu odmítl (možná soukromé prohlížení nebo plné úložiště)');
+  } catch (e) {
+    ukazChybu('Nahrávka se neuložila natrvalo: ' + (e && e.message ? e.message : e));
+  }
+}
+function ukazChybu(text) {
+  const t = document.createElement('div');
+  t.textContent = '⚠️ ' + text;
+  t.style.cssText = 'position:fixed;left:12px;right:12px;bottom:14px;z-index:99;background:#B8392F;color:#fff;padding:10px 14px;border-radius:12px;font-size:13px;box-shadow:0 4px 14px rgba(0,0,0,.3);';
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 6000);
+}
+function nactiNahravky() {
+  for (const id of Object.keys(NAZVY)) {
+    try {
+      const v = localStorage.getItem('farma-zvuk-' + id);
+      if (v) nahravky[id] = v;
+    } catch (e) {}
+  }
+  ukazPocetNahranych();
+}
+function ukazPocetNahranych() {
+  pocetNahranychEl.textContent = Object.keys(nahravky).length;
+}
+
+function vykresliStudio() {
+  seznamZvireat.innerHTML = '';
+  Object.keys(NAZVY).forEach(id => {
+    const ma = !!nahravky[id];
+    const nahrava = aktivniId === id;
+    const radek = document.createElement('div');
+    radek.className = 'radekZvire' + (ma ? ' hotovo' : '');
+    radek.innerHTML = `
+      <div class="ikonaJm"><span class="emoji">${EMOJI_PRO(id)}</span><span>${NAZVY[id]}</span></div>
+      <div class="ovladani">
+        <button class="tlBtn tlNahrat${nahrava ? ' aktivni' : ''}" data-akce="nahrat" data-id="${id}" aria-label="Nahrát">${nahrava ? '⏹' : '🎙️'}</button>
+        ${ma ? `<button class="tlBtn tlPrehrat" data-akce="prehrat" data-id="${id}" aria-label="Přehrát">▶️</button>
+                <button class="tlBtn tlSmazat" data-akce="smazat" data-id="${id}" aria-label="Smazat">🗑️</button>` : ''}
+      </div>`;
+    seznamZvireat.appendChild(radek);
+  });
+}
+function EMOJI_PRO(id) {
+  for (const e in ID_PODLE_EMOJI) if (ID_PODLE_EMOJI[e] === id) return e;
+  return '🐾';
+}
+seznamZvireat.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  const id = b.dataset.id, akce = b.dataset.akce;
+  if (akce === 'nahrat') {
+    if (aktivniId === id) ukonciNahravani();
+    else zahajNahravani(id);
+  } else if (akce === 'prehrat') prehrajNahravku(id);
+  else if (akce === 'smazat') smazNahravku(id);
+});
+otevriStudio.onclick = () => { vykresliStudio(); studio.classList.add('vidno'); };
+zavriStudio.onclick = () => { if (aktivniId) ukonciNahravani(); studio.classList.remove('vidno'); };
+
+/* ---------- záložní zvuky (řeč / píp) ---------- */
+const MLUVA = {
+  '🐷': { text: 'chro chro',      vyska: 0.4, tempo: 0.9 },
+  '🐑': { text: 'bééé',           vyska: 1.6, tempo: 0.6 },
+  '🐐': { text: 'mééé',           vyska: 1.8, tempo: 0.6 },
+  '🐮': { text: 'búúú',           vyska: 0.2, tempo: 0.5 },
+  '🐔': { text: 'ko ko ko dák',   vyska: 1.7, tempo: 1.4 },
+  '🐴': { text: 'í ha ha',        vyska: 1.3, tempo: 1.2 },
+  '🐰': { text: 'ňuf ňuf',        vyska: 2.0, tempo: 1.5 },
+  '🦆': { text: 'kvák kvák',      vyska: 1.2, tempo: 1.2 },
+  '🦃': { text: 'hudry hudry',    vyska: 0.8, tempo: 1.6 },
+  '🐕': { text: 'haf haf',        vyska: 0.7, tempo: 1.3 }
+};
+let hlasCS = null, mluvaFunguje = false;
+function najdiHlas() {
+  try {
+    const v = speechSynthesis.getVoices();
+    hlasCS = v.find(x => (x.lang || '').toLowerCase().startsWith('cs')) ||
+             v.find(x => (x.lang || '').toLowerCase().startsWith('sk')) || null;
+    mluvaFunguje = !!hlasCS;
+  } catch (e) { mluvaFunguje = false; }
+}
+if ('speechSynthesis' in window) { najdiHlas(); speechSynthesis.onvoiceschanged = najdiHlas; }
+
+let ac = null;
+function ctx() {
+  if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+  if (ac.state === 'suspended') ac.resume();
+  return ac;
+}
+function ton({ typ = 'triangle', od, na = od, delka = .3, hlas = .28, vibrato = 0, hloubka = 0, kdy = 0 }) {
+  if (!zvukZap) return;
+  try {
+    const a = ctx(), t = a.currentTime + kdy;
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = typ;
+    o.frequency.setValueAtTime(od, t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(na, 20), t + delka);
+    if (vibrato) {
+      const lfo = a.createOscillator(), lg = a.createGain();
+      lfo.frequency.value = vibrato; lg.gain.value = hloubka;
+      lfo.connect(lg); lg.connect(o.frequency);
+      lfo.start(t); lfo.stop(t + delka + .05);
+    }
+    g.gain.setValueAtTime(.0001, t);
+    g.gain.exponentialRampToValueAtTime(hlas, t + .03);
+    g.gain.exponentialRampToValueAtTime(.0001, t + delka);
+    o.connect(g); g.connect(a.destination);
+    o.start(t); o.stop(t + delka + .05);
+  } catch (e) {}
+}
+const PIPANI = {
+  '🐷': () => { ton({ typ: 'sawtooth', od: 150, na: 90, delka: .12, hlas: .3 }); ton({ typ: 'sawtooth', od: 160, na: 85, delka: .14, kdy: .16 }); },
+  '🐑': () => ton({ typ: 'sawtooth', od: 430, na: 360, delka: .55, vibrato: 22, hloubka: 45 }),
+  '🐐': () => ton({ typ: 'sawtooth', od: 560, na: 470, delka: .45, vibrato: 30, hloubka: 60 }),
+  '🐮': () => ton({ typ: 'triangle', od: 200, na: 125, delka: .8, hlas: .32, vibrato: 5, hloubka: 12 }),
+  '🐔': () => { ton({ typ: 'square', od: 1100, na: 760, delka: .08, hlas: .2 }); ton({ typ: 'square', od: 1300, na: 800, delka: .1, hlas: .2, kdy: .13 }); },
+  '🐴': () => ton({ typ: 'sawtooth', od: 760, na: 240, delka: .6, vibrato: 26, hloubka: 90 }),
+  '🐰': () => ton({ typ: 'square', od: 1500, na: 1900, delka: .09, hlas: .18 }),
+  '🦆': () => { ton({ typ: 'sawtooth', od: 360, na: 300, delka: .11, hlas: .3 }); ton({ typ: 'sawtooth', od: 340, na: 280, delka: .13, hlas: .3, kdy: .16 }); },
+  '🦃': () => { for (let i = 0; i < 5; i++) ton({ typ: 'sawtooth', od: 520, na: 300, delka: .07, hlas: .22, kdy: i * .08 }); },
+  '🐕': () => { ton({ typ: 'sawtooth', od: 320, na: 170, delka: .1, hlas: .32 }); ton({ typ: 'sawtooth', od: 300, na: 150, delka: .12, hlas: .3, kdy: .18 }); }
+};
+function zvireRekne(druh) {
+  if (!zvukZap) return;
+  const id = ID_PODLE_EMOJI[druh];
+  if (id && nahravky[id]) { prehrajNahravku(id); return; }
+  const m = MLUVA[druh];
+  if (mluvaFunguje && m) {
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(m.text);
+      u.voice = hlasCS; u.lang = hlasCS.lang; u.pitch = m.vyska; u.rate = m.tempo; u.volume = 1;
+      speechSynthesis.speak(u);
+      return;
+    } catch (e) {}
+  }
+  (PIPANI[druh] || (() => ton({ od: 700, delka: .12 })))();
+}
+function fanfara() { [523, 659, 784, 1047].forEach((f, i) => ton({ od: f, delka: .2, kdy: i * .13 })); }
+function smutek() { [400, 330, 260].forEach((f, i) => ton({ typ: 'triangle', od: f, delka: .3, kdy: i * .16 })); }
+function tik() { ton({ typ: 'square', od: 900, delka: .05, hlas: .12 }); }
+
+btnZvuk.onclick = () => {
+  zvukZap = !zvukZap;
+  if (!zvukZap && 'speechSynthesis' in window) speechSynthesis.cancel();
+  btnZvuk.textContent = zvukZap ? '🔊' : '🔇';
+};
+
+/* ---------- pozadí ---------- */
+['🌳','🌾','🌻','🌳','🌾'].forEach((k, i) => {
+  const e = document.createElement('div');
+  e.className = 'ker'; e.textContent = k;
+  e.style.left = (8 + i * 21) + '%'; e.style.top = (24 + (i % 3) * 6) + '%';
+  pole.appendChild(e);
+});
+
+/* ---------- výběr obtížnosti ---------- */
+document.querySelectorAll('.uroven').forEach(b => {
+  b.onclick = () => {
+    obtiznost = b.dataset.ur;
+    document.querySelectorAll('.uroven').forEach(x => x.classList.toggle('zvolena', x === b));
+    kolo = 1;
+    hrat.textContent = 'Začít';
+    hrat.dataset.akce = 'start';
+    ton({ od: 700, delka: .08, hlas: .15 });
+    ukazRekord();
+  };
+});
+
+btnZpet.onclick = () => {
+  bezi = false;
+  zvirata.forEach(z => z.el.remove());
+  zvirata = [];
+  karta.querySelector('.zviratka').textContent = '🐷 🐑 🐮 🐔';
+  karta.querySelector('h1').textContent = 'Vyber si obtížnost';
+  karta.querySelector('p').textContent = 'Lehká je pro nejmenší, těžká pro rychlé prsty.';
+  hrat.textContent = 'Hrát od začátku';
+  hrat.dataset.akce = 'start';
+  ukazRekord();
+  clona.classList.add('vidno');
+};
+
+/* ---------- hra ---------- */
+function noveKolo() {
+  const o = OBTIZNOSTI[obtiznost];
+  zvirata.forEach(z => z.el.remove());
+  zvirata = [];
+  doma = 0;
+  celkem = Math.min(o.pocet0 + kolo, o.maxPocet);
+  const rychlost = o.zaklad + (kolo - 1) * o.prirustek;
+  casMax = o.casBonus + celkem * o.casKus;
+  cas = casMax;
+  posledniTik = -1;
+  pasCas.classList.remove('malo');
+  const r = pole.getBoundingClientRect();
+
+  for (let i = 0; i < celkem; i++) {
+    const el = document.createElement('div');
+    el.className = 'zvire';
+    const s = document.createElement('span');
+    const druh = DRUHY[Math.floor(Math.random() * DRUHY.length)];
+    s.textContent = druh;
+    el.appendChild(s);
+    pole.appendChild(el);
+    const uhel = Math.random() * Math.PI * 2;
+    const z = {
+      el, vnitrek: s, druh,
+      x: 20 + Math.random() * Math.max(r.width - 118, 40),
+      y: r.height * .2 + Math.random() * (r.height * .55),
+      vx: Math.cos(uhel) * rychlost,
+      vy: Math.sin(uhel) * rychlost * .65,
+      chyceno: false
+    };
+    el.addEventListener('pointerdown', ev => { ev.preventDefault(); chyt(z); });
+    zvirata.push(z);
+  }
+  elKolo.textContent = kolo;
+  elCelkem.textContent = celkem;
+  elDoma.textContent = 0;
+  kresliCas();
+  bezi = true;
+}
+
+function kresliCas() {
+  const podil = Math.max(cas, 0) / casMax;
+  vypln.style.width = (podil * 100) + '%';
+  cisloCas.textContent = Math.ceil(Math.max(cas, 0));
+  pasCas.classList.toggle('malo', cas <= 5);
+}
+
+function chyt(z) {
+  if (z.chyceno || !bezi) return;
+  z.chyceno = true;
+  doma++;
+  elDoma.textContent = doma;
+  zvireRekne(z.druh);
+
+  const jiskra = document.createElement('div');
+  jiskra.className = 'jiskra'; jiskra.textContent = '✨';
+  jiskra.style.transform = `translate(${z.x + 20}px, ${z.y + 10}px)`;
+  pole.appendChild(jiskra);
+  setTimeout(() => jiskra.remove(), 700);
+
+  const p = pole.getBoundingClientRect(), s = stodola.getBoundingClientRect();
+  const cilX = s.left - p.left + s.width / 2 - 39;
+  const cilY = s.top - p.top + s.height - 52;
+  stodola.classList.add('otevreno');
+  z.el.classList.add('chyceno');
+  requestAnimationFrame(() => { z.el.style.transform = `translate(${cilX}px, ${cilY}px) scale(.35)`; });
+  setTimeout(() => stodola.classList.remove('otevreno'), 500);
+
+  if (doma === celkem) { bezi = false; setTimeout(vyhra, 650); }
+}
+
+function vyhra() {
+  fanfara();
+  if (kolo > (rekordy[obtiznost] || 0)) { rekordy[obtiznost] = kolo; ulozRekordy(); }
+  karta.querySelector('.zviratka').textContent = '🎉 🏠 🎉';
+  karta.querySelector('h1').textContent = 'Všechna zvířátka jsou doma!';
+  karta.querySelector('p').textContent = `Zbylo ti ${Math.round(cas)} vteřin. V dalším kole běhají rychleji.`;
+  hrat.textContent = 'Další kolo';
+  hrat.dataset.akce = 'dalsi';
+  ukazRekord();
+  clona.classList.add('vidno');
+}
+
+function prohra() {
+  bezi = false;
+  smutek();
+  const utekli = celkem - doma;
+  zvirata.filter(z => !z.chyceno).forEach(z => {
+    z.el.classList.add('schovano');
+    z.el.style.transform = `translate(${z.x}px, ${z.y + 40}px) scale(.4)`;
+  });
+  karta.querySelector('.zviratka').textContent = '🌳 🐑 🌳';
+  karta.querySelector('h1').textContent = 'Čas vypršel!';
+  karta.querySelector('p').textContent = utekli === 1
+    ? 'Jedno zvířátko se schovalo v lese. Zkus kolo znovu, nebo si zvol lehčí obtížnost.'
+    : `V lese se schovala zvířátka: ${utekli}. Zkus kolo znovu, nebo si zvol lehčí obtížnost.`;
+  hrat.textContent = 'Zkusit znovu';
+  hrat.dataset.akce = 'znovu';
+  ukazRekord();
+  clona.classList.add('vidno');
+}
+
+function ukazRekord() {
+  const r = rekordy[obtiznost] || 0;
+  document.getElementById('rekord').textContent = r > 0
+    ? `${OBTIZNOSTI[obtiznost].nazev}: nejdál kolo ${r}` : '';
+}
+
+hrat.onclick = () => {
+  if (hrat.dataset.akce === 'dalsi') kolo++;
+  if (hrat.dataset.akce === 'start') kolo = 1;
+  clona.classList.remove('vidno');
+  ton({ od: 880, delka: .1 });
+  noveKolo();
+};
+
+/* ---------- smyčka ---------- */
+let posledni = performance.now();
+function smycka(ted) {
+  const dt = Math.min((ted - posledni) / 1000, .05);
+  posledni = ted;
+
+  if (bezi) {
+    cas -= dt;
+    kresliCas();
+    const zbyva = Math.ceil(cas);
+    if (zbyva <= 5 && zbyva > 0 && zbyva !== posledniTik) { posledniTik = zbyva; tik(); }
+    if (cas <= 0) prohra();
+  }
+
+  const r = pole.getBoundingClientRect();
+  for (const z of zvirata) {
+    if (z.chyceno || z.el.classList.contains('schovano')) continue;
+    z.x += z.vx * dt;
+    z.y += z.vy * dt;
+    if (z.x < 0) { z.x = 0; z.vx *= -1; }
+    if (z.x > r.width - 78) { z.x = r.width - 78; z.vx *= -1; }
+    if (z.y < r.height * .16) { z.y = r.height * .16; z.vy *= -1; }
+    if (z.y > r.height - 82) { z.y = r.height - 82; z.vy *= -1; }
+    z.el.style.transform = `translate(${z.x}px, ${z.y}px)`;
+    z.vnitrek.style.transform = z.vx > 0 ? 'scaleX(-1)' : 'scaleX(1)';
+  }
+  requestAnimationFrame(smycka);
+}
+requestAnimationFrame(smycka);
+
+/* ---------- rekordy ---------- */
+function nactiRekordy() {
+  try {
+    const v = localStorage.getItem('farma-rekordy');
+    if (v) { rekordy = JSON.parse(v) || {}; ukazRekord(); }
+  } catch (e) {}
+}
+function ulozRekordy() {
+  try { localStorage.setItem('farma-rekordy', JSON.stringify(rekordy)); } catch (e) {}
+}
+nactiRekordy();
+nactiNahravky();
+</script>
